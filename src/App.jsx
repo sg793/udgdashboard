@@ -1,21 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
-const projectsSeed = [
-  { id: 1, jobNumber: "2025-001", jobName: "Rio Bank Elsa Expansion", client: "Rio Bank", lead: "Sergio", phase: "CA", status: "On Track", billingHealth: "healthy", contractAmount: 340000, totalBilled: 220000, totalCollected: 205000, remainingToBill: 120000, consultantBilled: 42000, consultantCollected: 38000, futureExpected: 95000, startDate: "2025-01-10", monthsActive: 15, consultants: [{ name: "MEP Consultant", billed: 28000, collected: 25000 }, { name: "Structural Consultant", billed: 14000, collected: 13000 }], notes: "Healthy CA project with billing runway still available." },
-  { id: 2, jobNumber: "2025-002", jobName: "Weslaco Fire Station", client: "City of Weslaco", lead: "Jose", phase: "CA", status: "Watch", billingHealth: "warning", contractAmount: 410000, totalBilled: 390000, totalCollected: 360000, remainingToBill: 20000, consultantBilled: 61000, consultantCollected: 54000, futureExpected: 18000, startDate: "2025-02-03", monthsActive: 14, consultants: [{ name: "Civil Consultant", billed: 36000, collected: 30000 }, { name: "MEP Consultant", billed: 25000, collected: 24000 }], notes: "Close to fully billed. Should be watched carefully." },
-  { id: 3, jobNumber: "2025-003", jobName: "STC Building K Renovation", client: "STC", lead: "Jose", phase: "CA", status: "Waiting on Owner", billingHealth: "underwater", contractAmount: 180000, totalBilled: 180000, totalCollected: 135000, remainingToBill: 0, consultantBilled: 22000, consultantCollected: 17000, futureExpected: 0, startDate: "2025-08-20", monthsActive: 7, consultants: [{ name: "MEP Consultant", billed: 22000, collected: 17000 }], notes: "Billing exhausted while project remains active." },
-  { id: 4, jobNumber: "2025-004", jobName: "iShine Corpus Christi", client: "iShine", lead: "Zuri", phase: "CD", status: "On Track", billingHealth: "healthy", contractAmount: 150000, totalBilled: 90000, totalCollected: 90000, remainingToBill: 60000, consultantBilled: 18000, consultantCollected: 18000, futureExpected: 45000, startDate: "2025-11-14", monthsActive: 4, consultants: [{ name: "Civil Consultant", billed: 18000, collected: 18000 }], notes: "Strong production-phase job with good remaining billing." },
-  { id: 5, jobNumber: "2025-005", jobName: "McAllen Tenant Finish", client: "Private Client", lead: "Zuri", phase: "CD", status: "On Track", billingHealth: "healthy", contractAmount: 62000, totalBilled: 28000, totalCollected: 24000, remainingToBill: 34000, consultantBilled: 6000, consultantCollected: 6000, futureExpected: 26000, startDate: "2026-01-08", monthsActive: 3, consultants: [{ name: "MEP Consultant", billed: 6000, collected: 6000 }], notes: "Quick-cash production work." },
-  { id: 6, jobNumber: "2025-006", jobName: "Covenant High School", client: "CCA", lead: "Sergio", phase: "SD", status: "Program Shift", billingHealth: "healthy", contractAmount: 520000, totalBilled: 30000, totalCollected: 30000, remainingToBill: 490000, consultantBilled: 0, consultantCollected: 0, futureExpected: 150000, startDate: "2026-02-02", monthsActive: 2, consultants: [], notes: "Large front-end job with strong runway." },
-  { id: 7, jobNumber: "2025-007", jobName: "Medical Office Renovation", client: "KMDG", lead: "Jose", phase: "CA", status: "On Track", billingHealth: "warning", contractAmount: 98000, totalBilled: 82000, totalCollected: 76000, remainingToBill: 16000, consultantBilled: 10000, consultantCollected: 9000, futureExpected: 12000, startDate: "2025-07-01", monthsActive: 8, consultants: [{ name: "MEP Consultant", billed: 10000, collected: 9000 }], notes: "Near break-even. Monitor scope creep." },
-  { id: 8, jobNumber: "2025-008", jobName: "Bank Interior Refresh", client: "Regional Bank", lead: "Jose", phase: "CA", status: "On Track", billingHealth: "healthy", contractAmount: 76000, totalBilled: 42000, totalCollected: 39000, remainingToBill: 34000, consultantBilled: 8000, consultantCollected: 8000, futureExpected: 25000, startDate: "2025-12-01", monthsActive: 4, consultants: [{ name: "MEP Consultant", billed: 8000, collected: 8000 }], notes: "Steady CA work." },
-  { id: 9, jobNumber: "2025-009", jobName: "Clinic Addition", client: "Healthcare Client", lead: "Jose", phase: "CA", status: "Submittals", billingHealth: "warning", contractAmount: 125000, totalBilled: 110000, totalCollected: 98000, remainingToBill: 15000, consultantBilled: 15000, consultantCollected: 13000, futureExpected: 10000, startDate: "2025-06-15", monthsActive: 9, consultants: [{ name: "Structural Consultant", billed: 15000, collected: 13000 }], notes: "Late-stage project with limited remaining fee." },
-  { id: 10, jobNumber: "2025-010", jobName: "Warehouse Expansion", client: "Industrial Client", lead: "Jose", phase: "CA", status: "On Track", billingHealth: "healthy", contractAmount: 210000, totalBilled: 130000, totalCollected: 120000, remainingToBill: 80000, consultantBilled: 24000, consultantCollected: 22000, futureExpected: 65000, startDate: "2025-05-20", monthsActive: 10, consultants: [{ name: "Civil Consultant", billed: 24000, collected: 22000 }], notes: "Large active CA assignment." },
-  { id: 11, jobNumber: "2025-011", jobName: "Retail Shell Building", client: "Developer", lead: "Jose", phase: "CA", status: "Punchlist", billingHealth: "underwater", contractAmount: 87000, totalBilled: 87000, totalCollected: 80000, remainingToBill: 0, consultantBilled: 9000, consultantCollected: 9000, futureExpected: 0, startDate: "2025-03-10", monthsActive: 12, consultants: [{ name: "MEP Consultant", billed: 9000, collected: 9000 }], notes: "Still active, but no billing runway remains." },
-  { id: 12, jobNumber: "2025-012", jobName: "Church Fellowship Hall", client: "Church Client", lead: "Zuri", phase: "DD", status: "On Track", billingHealth: "healthy", contractAmount: 138000, totalBilled: 56000, totalCollected: 56000, remainingToBill: 82000, consultantBilled: 16000, consultantCollected: 16000, futureExpected: 60000, startDate: "2026-01-12", monthsActive: 3, consultants: [{ name: "MEP Consultant", billed: 9000, collected: 9000 }, { name: "Structural Consultant", billed: 7000, collected: 7000 }], notes: "Good production-stage project." },
-  { id: 13, jobNumber: "2025-013", jobName: "School Admin Remodel", client: "School Client", lead: "Zuri", phase: "CD", status: "On Track", billingHealth: "healthy", contractAmount: 89000, totalBilled: 41000, totalCollected: 41000, remainingToBill: 48000, consultantBilled: 9000, consultantCollected: 9000, futureExpected: 32000, startDate: "2026-01-28", monthsActive: 2, consultants: [{ name: "MEP Consultant", billed: 9000, collected: 9000 }], notes: "Early production work." },
-  { id: 14, jobNumber: "2025-014", jobName: "Office TI Package", client: "Private Tenant", lead: "Zuri", phase: "CD", status: "Permit Prep", billingHealth: "warning", contractAmount: 54000, totalBilled: 42000, totalCollected: 35000, remainingToBill: 12000, consultantBilled: 5000, consultantCollected: 5000, futureExpected: 8000, startDate: "2025-12-15", monthsActive: 4, consultants: [{ name: "MEP Consultant", billed: 5000, collected: 5000 }], notes: "Approaching billing edge." }
-];
+const PROJECTS_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRQkIsoeu_hacaCXYijobEMqKBIs_G_71qtJjnkyq_AGggQTs6Qqt6CnpnT51wyB9U1OL8dKIMqUB7f/pub?gid=0&single=true&output=csv";
 
 const proposalsSeed = [
   { id: 1, submissionType: "RFQ", jobName: "McAllen Fire Station 5", client: "City of McAllen", lead: "Sam", submissionDate: "2026-03-04", status: "Submitted", feeEstimate: 420000, fileName: "McAllen Fire Station 5 RFQ.pdf" },
@@ -38,7 +24,7 @@ const bankAccountsSeed = [
 const receivablesSeed = [
   { id: 1, client: "Rio Bank", invoice: "2401", date: "2026-02-20", amount: 18000, project: "2025-001 | Rio Bank Elsa Expansion" },
   { id: 2, client: "STC", invoice: "2402", date: "2026-01-31", amount: 32000, project: "2025-003 | STC Building K Renovation" },
-  { id: 3, client: "CCA", invoice: "2403", date: "2026-03-01", amount: 15000, project: "2025-006 | Covenant High School" },
+  { id: 3, client: "CCA", invoice: "2403", date: "2026-03-01", amount: 15000, project: "2026-001 | CCA Vackar High School" },
   { id: 4, client: "iShine", invoice: "2404", date: "2025-12-22", amount: 22000, project: "2025-004 | iShine Corpus Christi" }
 ];
 
@@ -48,6 +34,11 @@ const payablesSeed = [
   { id: 3, vendor: "Click", invoice: "C091", date: "2026-02-18", amount: 340, relatedTo: "Software" },
   { id: 4, vendor: "Heffner", invoice: "H877", date: "2026-01-20", amount: 4800, relatedTo: "Consultant" },
   { id: 5, vendor: "Earth Co", invoice: "E445", date: "2026-03-05", amount: 2600, relatedTo: "Survey" }
+];
+
+const fallbackProjectsSeed = [
+  { id: 1, jobNumber: "2025-001", jobName: "Rio Bank Elsa Expansion", client: "Rio Bank", lead: "Sergio", phase: "CA", status: "On Track", billingHealth: "healthy", contractAmount: 340000, totalBilled: 220000, totalCollected: 205000, remainingToBill: 120000, consultantBilled: 42000, consultantCollected: 38000, futureExpected: 95000, startDate: "2025-01-10", monthsActive: 15, consultants: [], notes: "Fallback sample data." },
+  { id: 2, jobNumber: "2025-002", jobName: "Weslaco Fire Station", client: "City of Weslaco", lead: "Jose", phase: "CA", status: "Watch", billingHealth: "warning", contractAmount: 410000, totalBilled: 390000, totalCollected: 360000, remainingToBill: 20000, consultantBilled: 61000, consultantCollected: 54000, futureExpected: 18000, startDate: "2025-02-03", monthsActive: 14, consultants: [], notes: "Fallback sample data." }
 ];
 
 const billingColorClasses = {
@@ -69,6 +60,76 @@ const statusPills = {
 const page = { background: "#f8fafc", minHeight: "100vh", color: "#0f172a", fontFamily: "Inter, Arial, sans-serif", padding: "24px" };
 const container = { maxWidth: "1280px", margin: "0 auto", display: "grid", gap: "24px" };
 const card = { background: "white", border: "1px solid #e2e8f0", borderRadius: "18px", padding: "18px", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" };
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    const next = line[i + 1];
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result.map((v) => v.trim());
+}
+
+function parseCSV(text) {
+  const lines = text.replace(/\r/g, "").split("\n").filter(Boolean);
+  if (!lines.length) return [];
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map((line, idx) => {
+    const values = parseCSVLine(line);
+    const row = { id: idx + 1 };
+    headers.forEach((h, i) => {
+      row[h] = values[i] ?? "";
+    });
+    return row;
+  });
+}
+
+function toNumber(value, fallback = 0) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const cleaned = String(value).replace(/[$,]/g, "");
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function normalizeProject(row, index) {
+  return {
+    id: row.id ?? index + 1,
+    jobNumber: row.jobNumber || row["job number"] || "",
+    jobName: row.jobName || row["job name"] || "",
+    client: row.client || "",
+    lead: row.lead || "",
+    phase: row.phase || "",
+    status: row.status || "On Track",
+    billingHealth: (row.billingHealth || row["billing health"] || "healthy").toLowerCase(),
+    contractAmount: toNumber(row.contractAmount || row["contract amount"]),
+    totalBilled: toNumber(row.totalBilled || row["total billed"]),
+    totalCollected: toNumber(row.totalCollected || row["total collected"]),
+    remainingToBill: toNumber(row.remainingToBill || row["remaining to bill"]),
+    consultantBilled: toNumber(row.consultantBilled || row["consultant billed"]),
+    consultantCollected: toNumber(row.consultantCollected || row["consultant collected"]),
+    futureExpected: toNumber(row.futureExpected || row["future expected"]),
+    startDate: row.startDate || row["start date"] || "",
+    monthsActive: toNumber(row.monthsActive || row["months active"], 0),
+    consultants: [],
+    notes: row.notes || ""
+  };
+}
 
 function currency(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
@@ -110,37 +171,64 @@ export default function App() {
   const [tab, setTab] = useState("projects");
   const [leadFilter, setLeadFilter] = useState("All");
   const [phaseFilter, setPhaseFilter] = useState("All");
-  const [selectedProjectId, setSelectedProjectId] = useState(projectsSeed[0].id);
+  const [projects, setProjects] = useState(fallbackProjectsSeed);
+  const [selectedProjectId, setSelectedProjectId] = useState(fallbackProjectsSeed[0].id);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [projectsError, setProjectsError] = useState("");
 
-  const leadOptions = ["All", ...Array.from(new Set(projectsSeed.map((p) => p.lead)))];
-  const phaseOptions = ["All", ...Array.from(new Set(projectsSeed.map((p) => p.phase)))];
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        setLoadingProjects(true);
+        const response = await fetch(PROJECTS_CSV_URL, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+        const text = await response.text();
+        const parsed = parseCSV(text).map(normalizeProject).filter((p) => p.jobNumber || p.jobName);
+        if (!parsed.length) throw new Error("No project rows found in CSV.");
+        setProjects(parsed);
+        setSelectedProjectId(parsed[0].id);
+        setProjectsError("");
+      } catch (err) {
+        setProjectsError(`Live Google Sheets feed failed. Showing fallback sample data. ${err.message}`);
+      } finally {
+        setLoadingProjects(false);
+      }
+    }
+    loadProjects();
+  }, []);
 
-  const filteredProjects = useMemo(() => [...projectsSeed].filter((p) => (leadFilter === "All" ? true : p.lead === leadFilter)).filter((p) => (phaseFilter === "All" ? true : p.phase === phaseFilter)).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber)), [leadFilter, phaseFilter]);
-  const selectedProject = projectsSeed.find((p) => p.id === selectedProjectId) || projectsSeed[0];
+  const leadOptions = ["All", ...Array.from(new Set(projects.map((p) => p.lead).filter(Boolean)))];
+  const phaseOptions = ["All", ...Array.from(new Set(projects.map((p) => p.phase).filter(Boolean)))];
+  const filteredProjects = useMemo(() => [...projects].filter((p) => (leadFilter === "All" ? true : p.lead === leadFilter)).filter((p) => (phaseFilter === "All" ? true : p.phase === phaseFilter)).sort((a, b) => String(a.jobNumber).localeCompare(String(b.jobNumber))), [projects, leadFilter, phaseFilter]);
+  const selectedProject = projects.find((p) => p.id === selectedProjectId) || projects[0] || fallbackProjectsSeed[0];
 
   const workloadRows = useMemo(() => {
-    const grouped = projectsSeed.reduce((acc, project) => {
-      if (!acc[project.lead]) acc[project.lead] = { id: project.lead, lead: project.lead, totalProjects: 0, phases: {}, contractAmount: 0, remainingToBill: 0 };
-      acc[project.lead].totalProjects += 1;
-      acc[project.lead].contractAmount += project.contractAmount;
-      acc[project.lead].remainingToBill += project.remainingToBill;
-      acc[project.lead].phases[project.phase] = (acc[project.lead].phases[project.phase] || 0) + 1;
+    const grouped = projects.reduce((acc, project) => {
+      const key = project.lead || "(Unassigned)";
+      if (!acc[key]) acc[key] = { id: key, lead: key, totalProjects: 0, phases: {}, contractAmount: 0, remainingToBill: 0 };
+      acc[key].totalProjects += 1;
+      acc[key].contractAmount += project.contractAmount;
+      acc[key].remainingToBill += project.remainingToBill;
+      acc[key].phases[project.phase || "Unassigned"] = (acc[key].phases[project.phase || "Unassigned"] || 0) + 1;
       return acc;
     }, {});
     return Object.values(grouped).map((row) => ({ ...row, phaseMix: Object.entries(row.phases).map(([phase, count]) => `${count} ${phase}`).join(" · ") })).sort((a, b) => b.totalProjects - a.totalProjects);
-  }, []);
+  }, [projects]);
 
-  const totalContracts = projectsSeed.reduce((sum, p) => sum + p.contractAmount, 0);
-  const totalRemaining = projectsSeed.reduce((sum, p) => sum + p.remainingToBill, 0);
-  const totalCollected = projectsSeed.reduce((sum, p) => sum + p.totalCollected, 0);
-  const phaseDistribution = Object.entries(projectsSeed.reduce((acc, p) => { acc[p.phase] = (acc[p.phase] || 0) + 1; return acc; }, {})).map(([label, value]) => ({ label, value, display: value }));
+  const totalContracts = projects.reduce((sum, p) => sum + p.contractAmount, 0);
+  const totalRemaining = projects.reduce((sum, p) => sum + p.remainingToBill, 0);
+  const totalCollected = projects.reduce((sum, p) => sum + p.totalCollected, 0);
+  const phaseDistribution = Object.entries(projects.reduce((acc, p) => { acc[p.phase || "Unassigned"] = (acc[p.phase || "Unassigned"] || 0) + 1; return acc; }, {})).map(([label, value]) => ({ label, value, display: value }));
 
   const receivables = receivablesSeed.map((r) => { const ageDays = diffDays(r.date); return { ...r, ageDays, bucket: agingBucket(ageDays) }; });
   const payables = payablesSeed.map((p) => { const ageDays = diffDays(p.date); return { ...p, ageDays, bucket: agingBucket(ageDays) }; });
   const cashTotal = bankAccountsSeed.reduce((sum, a) => sum + a.balance, 0);
   const currentAR = receivables.reduce((sum, r) => sum + r.amount, 0);
   const currentAP = payables.reduce((sum, p) => sum + p.amount, 0);
-  const arAgingRows = ["0-30", "31-60", "61-90", "90+"].map((bucket) => ({ label: bucket, value: receivables.filter((r) => r.bucket === bucket).reduce((sum, r) => sum + r.amount, 0), display: shortCurrency(receivables.filter((r) => r.bucket === bucket).reduce((sum, r) => sum + r.amount, 0)) }));
+  const arAgingRows = ["0-30", "31-60", "61-90", "90+"].map((bucket) => {
+    const value = receivables.filter((r) => r.bucket === bucket).reduce((sum, r) => sum + r.amount, 0);
+    return { label: bucket, value, display: shortCurrency(value) };
+  });
   const proposalSummary = { submitted: proposalsSeed.filter((p) => p.status === "Submitted").length, shortlisted: proposalsSeed.filter((p) => p.status === "Shortlisted").length, won: proposalsSeed.filter((p) => p.status === "Won").length, lost: proposalsSeed.filter((p) => p.status === "Lost").length };
 
   return (
@@ -153,18 +241,22 @@ export default function App() {
             <div style={{ color: "#64748b", marginTop: 8, maxWidth: 860 }}>Projects, workload, proposals, and financial command in one place. Built around job numbers, billing health, and staff balance.</div>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {[
-              ["projects", "Projects"],
-              ["workload", "Workload"],
-              ["proposals", "Proposals"],
-              ["financial", "Financial"]
-            ].map(([key, label]) => <button key={key} onClick={() => setTab(key)} style={{ borderRadius: 14, padding: "10px 16px", border: tab === key ? "1px solid #0f172a" : "1px solid #cbd5e1", background: tab === key ? "#0f172a" : "white", color: tab === key ? "white" : "#334155", cursor: "pointer", fontWeight: 600 }}>{label}</button>)}
+            {[["projects","Projects"],["workload","Workload"],["proposals","Proposals"],["financial","Financial"]].map(([key,label]) =>
+              <button key={key} onClick={() => setTab(key)} style={{ borderRadius: 14, padding: "10px 16px", border: tab === key ? "1px solid #0f172a" : "1px solid #cbd5e1", background: tab === key ? "#0f172a" : "white", color: tab === key ? "white" : "#334155", cursor: "pointer", fontWeight: 600 }}>{label}</button>
+            )}
           </div>
         </header>
 
+        {(loadingProjects || projectsError) && (
+          <div style={{ ...card, background: loadingProjects ? "#eff6ff" : "#fff7ed", borderColor: loadingProjects ? "#bfdbfe" : "#fdba74" }}>
+            <strong>{loadingProjects ? "Loading live Google Sheets data..." : "Projects feed warning"}</strong>
+            <div style={{ marginTop: 6, color: "#475569" }}>{loadingProjects ? "The dashboard is pulling the current projects tab from Google Sheets." : projectsError}</div>
+          </div>
+        )}
+
         {tab === "projects" && <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
-            <MetricCard label="Active Projects" value={projectsSeed.length} note="SGA only" />
+            <MetricCard label="Active Projects" value={projects.length} note="Live from Google Sheets" />
             <MetricCard label="Total Contracts" value={shortCurrency(totalContracts)} note="Signed project volume" />
             <MetricCard label="Remaining to Bill" value={shortCurrency(totalRemaining)} note="Live billing runway" />
             <MetricCard label="Total Collected" value={shortCurrency(totalCollected)} note="Cash already received" />
@@ -184,7 +276,7 @@ export default function App() {
               <div style={{ display: "grid", gap: 10 }}>
                 {filteredProjects.map((project) => <button key={project.id} onClick={() => setSelectedProjectId(project.id)} style={{ width: "100%", textAlign: "left", borderRadius: 14, border: selectedProjectId === project.id ? "1px solid #0f172a" : "1px solid #e2e8f0", padding: "12px 14px", background: selectedProjectId === project.id ? "#f8fafc" : "white", cursor: "pointer" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1.2fr 2.5fr 1fr 1fr 1fr", gap: 12, alignItems: "center" }}>
-                    <div style={{ fontWeight: 700, ...billingColorClasses[project.billingHealth] }}>{project.jobNumber}</div>
+                    <div style={{ fontWeight: 700, ...(billingColorClasses[project.billingHealth] || billingColorClasses.healthy) }}>{project.jobNumber}</div>
                     <div style={{ fontWeight: 600 }}>{project.jobName}</div>
                     <div style={{ fontSize: 14, color: "#475569" }}>{project.lead}</div>
                     <div style={{ fontSize: 14, color: "#475569" }}>{project.phase}</div>
@@ -198,7 +290,7 @@ export default function App() {
               <div style={card}>
                 <SectionTitle title="Project Detail" subtitle="Deeper economics and consultant profile" />
                 <div style={{ display: "grid", gap: 16 }}>
-                  <div><div style={{ fontSize: 22, fontWeight: 700, ...billingColorClasses[selectedProject.billingHealth] }}>{selectedProject.jobNumber}</div><div style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>{selectedProject.jobName}</div><div style={{ color: "#64748b", marginTop: 4 }}>{selectedProject.client}</div></div>
+                  <div><div style={{ fontSize: 22, fontWeight: 700, ...(billingColorClasses[selectedProject.billingHealth] || billingColorClasses.healthy) }}>{selectedProject.jobNumber}</div><div style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>{selectedProject.jobName}</div><div style={{ color: "#64748b", marginTop: 4 }}>{selectedProject.client}</div></div>
                   <div><div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 8 }}>Job Age</div><MonthSquares count={selectedProject.monthsActive} /><div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>{selectedProject.monthsActive} active months</div></div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14 }}>
                     <div><div style={{ color: "#94a3b8" }}>Lead</div><div style={{ fontWeight: 600, marginTop: 4 }}>{selectedProject.lead}</div></div>
@@ -218,7 +310,6 @@ export default function App() {
                       <div style={{ gridColumn: "1 / span 2" }}><div style={{ color: "#94a3b8" }}>Future Expected Amounts</div><div style={{ fontWeight: 700, marginTop: 4 }}>{currency(selectedProject.futureExpected)}</div></div>
                     </div>
                   </div>
-                  <div><div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 8 }}>Consultants</div><div style={{ display: "grid", gap: 8 }}>{selectedProject.consultants.length ? selectedProject.consultants.map((consultant) => <div key={consultant.name} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 10, fontSize: 14 }}><div style={{ fontWeight: 600 }}>{consultant.name}</div><div style={{ color: "#64748b", marginTop: 4 }}>Billed {currency(consultant.billed)} · Collected {currency(consultant.collected)}</div></div>) : <div style={{ color: "#64748b", fontSize: 14 }}>No consultants assigned yet.</div>}</div></div>
                   <div style={{ fontSize: 14, color: "#475569" }}>{selectedProject.notes}</div>
                 </div>
               </div>
@@ -263,7 +354,7 @@ export default function App() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 24 }}>
             <div style={card}><SectionTitle title="Cash by Account" subtitle="Current cash buckets" /><SimpleBarChart rows={bankAccountsSeed.map((a) => ({ label: a.name, value: a.balance, display: shortCurrency(a.balance) }))} color="#0f172a" /></div>
             <div style={card}><SectionTitle title="AR Aging" subtitle="Collection pressure by bucket" /><SimpleBarChart rows={arAgingRows} color="#16a34a" /></div>
-            <div style={card}><SectionTitle title="Remaining Billing by Project" subtitle="Largest live contract runway" /><SimpleBarChart rows={[...projectsSeed].sort((a, b) => b.remainingToBill - a.remainingToBill).slice(0, 5).map((p) => ({ label: p.jobNumber, value: p.remainingToBill, display: shortCurrency(p.remainingToBill) }))} color="#4f46e5" /></div>
+            <div style={card}><SectionTitle title="Remaining Billing by Project" subtitle="Largest live contract runway" /><SimpleBarChart rows={[...projects].sort((a, b) => b.remainingToBill - a.remainingToBill).slice(0, 5).map((p) => ({ label: p.jobNumber, value: p.remainingToBill, display: shortCurrency(p.remainingToBill) }))} color="#4f46e5" /></div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
             <div><SectionTitle title="Accounts Receivable" subtitle="Invoice dates and aging" /><DataTable columns={[{ key: "client", label: "Client" }, { key: "project", label: "Project" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }]} rows={receivables} /></div>
