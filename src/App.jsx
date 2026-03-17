@@ -429,6 +429,10 @@ export default function App() {
     const value = receivables.filter((r) => r.bucket === bucket).reduce((sum, r) => sum + r.amount, 0);
     return { label: bucket, value, display: shortCurrency(value) };
   });
+  const apAgingRows = ["0-30", "31-60", "61-90", "90+"].map((bucket) => {
+    const value = payables.filter((p) => p.bucket === bucket).reduce((sum, p) => sum + p.amount, 0);
+    return { label: bucket, value, display: shortCurrency(value) };
+  });
   const proposalSummary = { submitted: proposalsSeed.filter((p) => p.status === "Submitted").length, shortlisted: proposalsSeed.filter((p) => p.status === "Shortlisted").length, won: proposalsSeed.filter((p) => p.status === "Won").length, lost: proposalsSeed.filter((p) => p.status === "Lost").length };
 
   return React.createElement("div", { style: page },
