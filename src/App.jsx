@@ -123,9 +123,13 @@ function parseCSV(text) {
 
 function toNumber(value, fallback = 0) {
   if (value === undefined || value === null || value === "") return fallback;
-  const cleaned = String(value).replace(/[$,]/g, "");
+  const raw = String(value).trim();
+  if (!raw) return fallback;
+  const isParenNegative = /^\(.*\)$/.test(raw);
+  const cleaned = raw.replace(/[\$,]/g, "").replace(/^\((.*)\)$/, "$1");
   const num = Number(cleaned);
-  return Number.isFinite(num) ? num : fallback;
+  if (!Number.isFinite(num)) return fallback;
+  return isParenNegative ? -num : num;
 }
 
 function normalizeProject(row, index) {
@@ -565,16 +569,16 @@ export default function App() {
       ) : null,
 
       tab === "financial" ? React.createElement(React.Fragment, null,
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "AR Aging", subtitle: "Collection pressure by bucket" }), React.createElement(SimpleBarChart, { rows: arAgingRows, color: "#16a34a" })),
+          React.createElement("div", null, React.createElement(SectionTitle, { title: "Accounts Payable", subtitle: "Vendor obligations" }), React.createElement(DataTable, { columns: [{ key: "vendor", label: "Vendor" }, { key: "relatedTo", label: "Type" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: payables }))
+        ),
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 16 } },
           React.createElement(MetricCard, { label: "Cash in Bank", value: shortCurrency(cashTotal), note: "Across tracked accounts" }),
           React.createElement(MetricCard, { label: "Current AR", value: shortCurrency(currentAR), note: "Earned but uncollected" }),
           React.createElement(MetricCard, { label: "Trailing 4Q Gross", value: shortCurrency(trailingFourQuarterGross), note: "From financialHistory" }),
           React.createElement(MetricCard, { label: "Best Quarter", value: bestQuarter ? bestQuarter.display : "$0", note: bestQuarter ? bestQuarter.label : "No data" }),
           React.createElement(MetricCard, { label: "Best OBI Year", value: bestOrdinaryIncomeYear ? bestOrdinaryIncomeYear.display : "$0", note: bestOrdinaryIncomeYear ? bestOrdinaryIncomeYear.label : "No data" })
-        ),
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
-          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "AR Aging", subtitle: "Collection pressure by bucket" }), React.createElement(SimpleBarChart, { rows: arAgingRows, color: "#16a34a" })),
-          React.createElement("div", null, React.createElement(SectionTitle, { title: "Accounts Payable", subtitle: "Vendor obligations" }), React.createElement(DataTable, { columns: [{ key: "vendor", label: "Vendor" }, { key: "relatedTo", label: "Type" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: payables }))
         ),
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 24 } },
           React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Cash by Account", subtitle: "Current cash buckets" }), React.createElement(SimpleBarChart, { rows: bankAccountsSeed.map((a) => ({ label: a.name, value: a.balance, display: shortCurrency(a.balance) })), color: "#0f172a" })),
@@ -598,7 +602,7 @@ export default function App() {
           React.createElement("div", null, React.createElement(SectionTitle, { title: "Accounts Receivable", subtitle: "Invoice dates and aging" }), React.createElement(DataTable, { columns: [{ key: "client", label: "Client" }, { key: "project", label: "Project" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: receivables }))
         ),
         React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Quarterly Gross Revenue", subtitle: "Live from financialHistory tab" }), React.createElement(SimpleBarChart, { rows: financialHistoryChartRows.length ? financialHistoryChartRows : [{ label: "No data", value: 0, display: "$0" }], color: "#0f172a" }))
-      ) : null      ) : null
+      ) : null
     )
   );
 }
