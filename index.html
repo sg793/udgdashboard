@@ -1,12 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SGA Operating Dashboard</title>
-  </head>
-  <body style="margin:0;">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGA Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="eyebrow">Sam Garcia Architect, LLC</div>
+        <h1>Firm Dashboard</h1>
+        <p>Projects, consultants, and long-range financial history in one place.</p>
+      </div>
+      <nav class="nav-links">
+        <button class="nav-link active" data-view="overview">Overview</button>
+        <button class="nav-link" data-view="projects">Projects</button>
+        <button class="nav-link" data-view="consultants">Consultants</button>
+        <button class="nav-link" data-view="financials">Financials</button>
+      </nav>
+      <div class="sidebar-footnote" id="lastUpdated">Loading data…</div>
+    </aside>
+
+    <main class="main-content">
+      <section class="topbar">
+        <div>
+          <div class="eyebrow">Owner View</div>
+          <h2 id="viewTitle">Overview</h2>
+        </div>
+        <div class="topbar-actions">
+          <button id="refreshBtn" class="button-secondary">Refresh data</button>
+        </div>
+      </section>
+
+      <section id="globalAlert" class="alert hidden"></section>
+
+      <section id="view-overview" class="view active">
+        <div class="kpi-grid" id="overviewKpis"></div>
+        <div class="chart-grid two-up">
+          <div class="panel"><h3>Projects by Status</h3><canvas id="statusChart"></canvas></div>
+          <div class="panel"><h3>Billing Health</h3><canvas id="billingHealthChart"></canvas></div>
+          <div class="panel"><h3>Phase Distribution</h3><canvas id="phaseChart"></canvas></div>
+          <div class="panel"><h3>Projects by Lead</h3><canvas id="leadChart"></canvas></div>
+        </div>
+      </section>
+
+      <section id="view-projects" class="view">
+        <div class="inline-controls">
+          <input id="projectSearch" type="search" placeholder="Search job number, job name, client, lead…" />
+        </div>
+        <div class="kpi-grid" id="projectKpis"></div>
+        <div class="panel table-panel">
+          <h3>Project Log</h3>
+          <div class="table-wrap">
+            <table id="projectsTable">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-consultants" class="view">
+        <div class="kpi-grid" id="consultantKpis"></div>
+        <div class="chart-grid two-up">
+          <div class="panel"><h3>Consultants by Status</h3><canvas id="consultantStatusChart"></canvas></div>
+          <div class="panel"><h3>Consultant Fees by Discipline</h3><canvas id="consultantDisciplineChart"></canvas></div>
+        </div>
+        <div class="panel table-panel">
+          <h3>Consultant Log</h3>
+          <div class="table-wrap">
+            <table id="consultantsTable">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-financials" class="view">
+        <div class="kpi-grid" id="financialKpis"></div>
+        <div class="chart-grid one-up">
+          <div class="panel"><h3>Quarterly Gross Revenue</h3><canvas id="quarterlyGrossChart"></canvas></div>
+          <div class="panel"><h3>Annual Gross Revenue</h3><canvas id="annualGrossChart"></canvas></div>
+          <div class="panel"><h3>Annual Ordinary Business Income</h3><canvas id="obiChart"></canvas></div>
+          <div class="panel"><h3>Annual Gross vs. Ordinary Business Income</h3><canvas id="grossVsObiChart"></canvas></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
 </html>
