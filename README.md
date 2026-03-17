@@ -1,15 +1,5 @@
-SGA Dashboard - Live Projects + Consultants + Financial History + Tax Summary
+SGA Dashboard - Live Projects + Consultants
 
-This version is a Vite/React app and preserves the expected /src project structure.
-It pulls these published Google Sheets CSV feeds live:
-- Projects
-- Consultants
-- Financial History
-- Annual Tax Summary
-
-Deploy notes:
-1. Upload the full folder to GitHub.
-2. Let Vercel auto-deploy the Vite app.
-3. Run npm install during deployment so Chart.js and Papa Parse are installed.
-
-No extra environment variables are required.
+This version pulls both the Projects and Consultants tabs live from published Google Sheets CSV feeds.
+Replace your repo root files with this package contents and let Vercel auto-deploy.
+Delete old tailwind.config.js and postcss.config.js if they still exist.
