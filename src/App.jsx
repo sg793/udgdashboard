@@ -220,17 +220,29 @@ function MonthSquares({ count }) {
   );
 }
 function SimpleBarChart({ rows, color = "#0f172a" }) {
-  const max = Math.max(...rows.map((r) => r.value), 1);
+  const numericValues = rows.map((r) => Number(r.value) || 0);
+  const maxPositive = Math.max(...numericValues, 0);
+  const maxNegativeMagnitude = Math.max(...numericValues.map((v) => Math.abs(Math.min(v, 0))), 0);
+  const span = maxPositive + maxNegativeMagnitude || 1;
+
   return React.createElement("div", { style: { display: "grid", gap: 12 } },
-    rows.map((row) => React.createElement("div", { key: row.label },
-      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 14, marginBottom: 6 } },
-        React.createElement("span", { style: { color: "#475569" } }, row.label),
-        React.createElement("span", { style: { color: "#64748b" } }, row.display)
-      ),
-      React.createElement("div", { style: { background: "#e2e8f0", height: 10, borderRadius: 999 } },
-        React.createElement("div", { style: { width: `${(row.value / max) * 100}%`, background: color, height: 10, borderRadius: 999 } })
-      )
-    ))
+    rows.map((row) => {
+      const value = Number(row.value) || 0;
+      const positiveWidth = value > 0 ? `${(value / span) * 100}%` : "0%";
+      const negativeWidth = value < 0 ? `${(Math.abs(value) / span) * 100}%` : "0%";
+      const baselineOffset = `${(maxNegativeMagnitude / span) * 100}%`;
+      return React.createElement("div", { key: row.label },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 14, marginBottom: 6 } },
+          React.createElement("span", { style: { color: "#475569" } }, row.label),
+          React.createElement("span", { style: { color: "#64748b" } }, row.display)
+        ),
+        React.createElement("div", { style: { position: "relative", background: "#e2e8f0", height: 10, borderRadius: 999, overflow: "hidden" } },
+          (maxNegativeMagnitude > 0 && maxPositive > 0) ? React.createElement("div", { style: { position: "absolute", left: baselineOffset, top: 0, bottom: 0, width: 1, background: "#94a3b8", zIndex: 2 } }) : null,
+          value < 0 ? React.createElement("div", { style: { position: "absolute", left: `calc(${baselineOffset} - ${negativeWidth})`, top: 0, height: 10, width: negativeWidth, background: "#dc2626", borderRadius: 999 } }) : null,
+          value >= 0 ? React.createElement("div", { style: { position: "absolute", left: baselineOffset, top: 0, height: 10, width: positiveWidth, background: color, borderRadius: 999 } }) : null
+        )
+      );
+    })
   );
 }
 function DataTable({ columns, rows }) {
@@ -560,33 +572,33 @@ export default function App() {
           React.createElement(MetricCard, { label: "Best Quarter", value: bestQuarter ? bestQuarter.display : "$0", note: bestQuarter ? bestQuarter.label : "No data" }),
           React.createElement(MetricCard, { label: "Best OBI Year", value: bestOrdinaryIncomeYear ? bestOrdinaryIncomeYear.display : "$0", note: bestOrdinaryIncomeYear ? bestOrdinaryIncomeYear.label : "No data" })
         ),
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 24 } },
-          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Cash by Account", subtitle: "Current cash buckets" }), React.createElement(SimpleBarChart, { rows: bankAccountsSeed.map((a) => ({ label: a.name, value: a.balance, display: shortCurrency(a.balance) })), color: "#0f172a" })),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
           React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "AR Aging", subtitle: "Collection pressure by bucket" }), React.createElement(SimpleBarChart, { rows: arAgingRows, color: "#16a34a" })),
+          React.createElement("div", null, React.createElement(SectionTitle, { title: "Accounts Payable", subtitle: "Vendor obligations" }), React.createElement(DataTable, { columns: [{ key: "vendor", label: "Vendor" }, { key: "relatedTo", label: "Type" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: payables }))
+        ),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 24 } },
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Cash by Account", subtitle: "Current cash buckets" }), React.createElement(SimpleBarChart, { rows: bankAccountsSeed.map((a) => ({ label: a.name, value: a.balance, display: shortCurrency(a.balance) })), color: "#0f172a" })),
           React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Remaining Billing by Project", subtitle: "Largest live contract runway" }), React.createElement(SimpleBarChart, { rows: [...projectsWithConsultantTotals].sort((a, b) => b.remainingToBill - a.remainingToBill).slice(0, 5).map((p) => ({ label: p.jobNumber, value: p.remainingToBill, display: shortCurrency(p.remainingToBill) })), color: "#4f46e5" })),
           React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Consultant Exposure by Firm", subtitle: "Billed minus paid" }), React.createElement(SimpleBarChart, { rows: consultantExposureRows.length ? consultantExposureRows : [{ label: "None", value: 0, display: "$0" }], color: "#dc2626" }))
         ),
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
-          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Quarterly Gross Revenue", subtitle: "Live from financialHistory tab" }), React.createElement(SimpleBarChart, { rows: financialHistoryChartRows.length ? financialHistoryChartRows : [{ label: "No data", value: 0, display: "$0" }], color: "#0f172a" })),
-          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Annual Gross Revenue", subtitle: "Summed from quarterly history" }), React.createElement(SimpleBarChart, { rows: annualGrossRows.length ? annualGrossRows : [{ label: "No data", value: 0, display: "$0" }], color: "#4f46e5" }))
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Annual Gross Revenue", subtitle: "Summed from quarterly history" }), React.createElement(SimpleBarChart, { rows: annualGrossRows.length ? annualGrossRows : [{ label: "No data", value: 0, display: "$0" }], color: "#4f46e5" })),
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Annual Ordinary Business Income", subtitle: "From annualTaxSummary tab" }), React.createElement(SimpleBarChart, { rows: annualTaxRows.length ? annualTaxRows : [{ label: "No data", value: 0, display: "$0" }], color: "#16a34a" }))
         ),
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
-          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Annual Ordinary Business Income", subtitle: "From annualTaxSummary tab" }), React.createElement(SimpleBarChart, { rows: annualTaxRows.length ? annualTaxRows : [{ label: "No data", value: 0, display: "$0" }], color: "#16a34a" })),
           React.createElement("div", { style: card },
             React.createElement(SectionTitle, { title: "Financial History Notes", subtitle: "Owner-level context" }),
             React.createElement("div", { style: { display: "grid", gap: 12, fontSize: 14, color: "#334155" } },
               React.createElement("div", null, React.createElement("strong", null, "Highest Grossing Year: "), bestYear ? `${bestYear.label} · ${bestYear.display}` : "No data"),
               React.createElement("div", null, React.createElement("strong", null, "Highest Quarter: "), bestQuarter ? `${bestQuarter.label} · ${bestQuarter.display}` : "No data"),
               React.createElement("div", null, React.createElement("strong", null, "Tax Metric: "), "Ordinary Business Income reflects filed S-corporation returns and may differ from internal management reporting."),
-              React.createElement("div", null, React.createElement("strong", null, "Data Structure: "), "Quarterly gross revenue comes from financialHistory. Annual OBI comes from annualTaxSummary." )
+              React.createElement("div", null, React.createElement("strong", null, "Data Structure: "), "Quarterly gross revenue comes from financialHistory. Annual OBI comes from annualTaxSummary.")
             )
-          )
+          ),
+          React.createElement("div", null, React.createElement(SectionTitle, { title: "Accounts Receivable", subtitle: "Invoice dates and aging" }), React.createElement(DataTable, { columns: [{ key: "client", label: "Client" }, { key: "project", label: "Project" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: receivables }))
         ),
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 } },
-          React.createElement("div", null, React.createElement(SectionTitle, { title: "Accounts Receivable", subtitle: "Invoice dates and aging" }), React.createElement(DataTable, { columns: [{ key: "client", label: "Client" }, { key: "project", label: "Project" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: receivables })),
-          React.createElement("div", null, React.createElement(SectionTitle, { title: "Accounts Payable", subtitle: "Vendor obligations" }), React.createElement(DataTable, { columns: [{ key: "vendor", label: "Vendor" }, { key: "relatedTo", label: "Type" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: payables }))
-        )
-      ) : null
+        React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Quarterly Gross Revenue", subtitle: "Live from financialHistory tab" }), React.createElement(SimpleBarChart, { rows: financialHistoryChartRows.length ? financialHistoryChartRows : [{ label: "No data", value: 0, display: "$0" }], color: "#0f172a" }))
+      ) : null      ) : null
     )
   );
 }
