@@ -5,6 +5,8 @@ const PROJECTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRQkIs
 const CONSULTANTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRQkIsoeu_hacaCXYijobEMqKBIs_G_71qtJjnkyq_AGggQTs6Qqt6CnpnT51wyB9U1OL8dKIMqUB7f/pub?gid=622686252&single=true&output=csv";
 const FINANCIAL_HISTORY_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRQkIsoeu_hacaCXYijobEMqKBIs_G_71qtJjnkyq_AGggQTs6Qqt6CnpnT51wyB9U1OL8dKIMqUB7f/pub?gid=1382479765&single=true&output=csv";
 const ANNUAL_TAX_SUMMARY_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRQkIsoeu_hacaCXYijobEMqKBIs_G_71qtJjnkyq_AGggQTs6Qqt6CnpnT51wyB9U1OL8dKIMqUB7f/pub?gid=2049060251&single=true&output=csv";
+const ACCOUNTS_RECEIVABLE_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRQkIsoeu_hacaCXYijobEMqKBIs_G_71qtJjnkyq_AGggQTs6Qqt6CnpnT51wyB9U1OL8dKIMqUB7f/pub?gid=99492046&single=true&output=csv";
+const ACCOUNTS_PAYABLE_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRQkIsoeu_hacaCXYijobEMqKBIs_G_71qtJjnkyq_AGggQTs6Qqt6CnpnT51wyB9U1OL8dKIMqUB7f/pub?gid=606070732&single=true&output=csv";
 
 const proposalsSeed = [
   { id: 1, submissionType: "RFQ", jobName: "McAllen Fire Station 5", client: "City of McAllen", lead: "Sam", submissionDate: "2026-03-04", status: "Submitted", feeEstimate: 420000, fileName: "McAllen Fire Station 5 RFQ.pdf" },
@@ -24,19 +26,19 @@ const bankAccountsSeed = [
   { name: "Education Expenses", balance: 350 }
 ];
 
-const receivablesSeed = [
-  { id: 1, client: "Rio Bank", invoice: "2401", date: "2026-02-20", amount: 18000, project: "2025-001 | Rio Bank Elsa Expansion" },
-  { id: 2, client: "STC", invoice: "2402", date: "2026-01-31", amount: 32000, project: "2025-009 | STC Building K Renovations" },
-  { id: 3, client: "CCA", invoice: "2403", date: "2026-03-01", amount: 15000, project: "2026-001 | CCA Vackar High School" },
-  { id: 4, client: "iShine", invoice: "2404", date: "2025-12-22", amount: 22000, project: "2025-004 | iShine Corpus Christi" }
+const fallbackAccountsReceivableSeed = [
+  { id: 1, jobNumber: "2025-001", invoiceNumber: "2401", invoiceDate: "2026-02-20", invoiceAmount: 18000 },
+  { id: 2, jobNumber: "2025-009", invoiceNumber: "2402", invoiceDate: "2026-01-31", invoiceAmount: 32000 },
+  { id: 3, jobNumber: "2026-001", invoiceNumber: "2403", invoiceDate: "2026-03-01", invoiceAmount: 15000 },
+  { id: 4, jobNumber: "2025-004", invoiceNumber: "2404", invoiceDate: "2025-12-22", invoiceAmount: 22000 }
 ];
 
-const payablesSeed = [
-  { id: 1, vendor: "Trinity", invoice: "A112", date: "2026-02-25", amount: 2200, relatedTo: "Consultant" },
-  { id: 2, vendor: "Rioplex", invoice: "R320", date: "2026-03-03", amount: 1800, relatedTo: "Intercompany" },
-  { id: 3, vendor: "Click", invoice: "C091", date: "2026-02-18", amount: 340, relatedTo: "Software" },
-  { id: 4, vendor: "Heffner", invoice: "H877", date: "2026-01-20", amount: 4800, relatedTo: "Consultant" },
-  { id: 5, vendor: "Earth Co", invoice: "E445", date: "2026-03-05", amount: 2600, relatedTo: "Survey" }
+const fallbackAccountsPayableSeed = [
+  { id: 1, jobNumber: "2025-001", invoiceDate: "2026-02-25", consultant: "Trinity", amount: 2200 },
+  { id: 2, jobNumber: "2025-001", invoiceDate: "2026-03-03", consultant: "Rioplex", amount: 1800 },
+  { id: 3, jobNumber: "2025-009", invoiceDate: "2026-02-18", consultant: "Click", amount: 340 },
+  { id: 4, jobNumber: "2026-001", invoiceDate: "2026-01-20", consultant: "Heffner", amount: 4800 },
+  { id: 5, jobNumber: "2025-004", invoiceDate: "2026-03-05", consultant: "Earth Co", amount: 2600 }
 ];
 
 const fallbackProjectsSeed = [
@@ -186,6 +188,26 @@ function normalizeAnnualTaxSummary(row, index) {
   };
 }
 
+function normalizeAccountsReceivable(row, index) {
+  return {
+    id: row.id ?? index + 1,
+    jobNumber: row.jobNumber || row["job number"] || row.projectNumber || row["project number"] || "",
+    invoiceNumber: row.invoiceNumber || row["invoice number"] || "",
+    invoiceDate: row.invoiceDate || row["invoice date"] || "",
+    invoiceAmount: toNumber(row.invoiceAmount || row["invoice amount"] || row.amount),
+  };
+}
+
+function normalizeAccountsPayable(row, index) {
+  return {
+    id: row.id ?? index + 1,
+    jobNumber: row.jobNumber || row["job number"] || row.projectNumber || row["project number"] || "",
+    invoiceDate: row.invoiceDate || row["invoice date"] || "",
+    consultant: row.consultant || row.vendor || "",
+    amount: toNumber(row.amount || row["invoice amount"] || row["amount"])
+  };
+}
+
 function currency(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value || 0);
 }
@@ -195,7 +217,7 @@ function shortCurrency(value) {
   return currency(value || 0);
 }
 function diffDays(dateString) {
-  const today = new Date("2026-03-12T00:00:00");
+  const today = new Date("2026-03-18T00:00:00");
   const date = new Date(`${dateString}T00:00:00`);
   return Math.max(0, Math.floor((today - date) / (1000 * 60 * 60 * 24)));
 }
@@ -274,6 +296,8 @@ export default function App() {
   const [consultants, setConsultants] = useState(fallbackConsultantsSeed);
   const [financialHistory, setFinancialHistory] = useState(fallbackFinancialHistorySeed);
   const [annualTaxSummary, setAnnualTaxSummary] = useState(fallbackAnnualTaxSummarySeed);
+  const [accountsReceivable, setAccountsReceivable] = useState(fallbackAccountsReceivableSeed);
+  const [accountsPayable, setAccountsPayable] = useState(fallbackAccountsPayableSeed);
   const [selectedProjectId, setSelectedProjectId] = useState(fallbackProjectsSeed[0].id);
   const [loading, setLoading] = useState(true);
   const [feedWarning, setFeedWarning] = useState("");
@@ -282,26 +306,34 @@ export default function App() {
     async function loadData() {
       try {
         setLoading(true);
-        const [projectsResponse, consultantsResponse, financialHistoryResponse, annualTaxSummaryResponse] = await Promise.all([
+        const [projectsResponse, consultantsResponse, financialHistoryResponse, annualTaxSummaryResponse, accountsReceivableResponse, accountsPayableResponse] = await Promise.all([
           fetch(PROJECTS_CSV_URL, { cache: "no-store" }),
           fetch(CONSULTANTS_CSV_URL, { cache: "no-store" }),
           fetch(FINANCIAL_HISTORY_CSV_URL, { cache: "no-store" }),
-          fetch(ANNUAL_TAX_SUMMARY_CSV_URL, { cache: "no-store" })
+          fetch(ANNUAL_TAX_SUMMARY_CSV_URL, { cache: "no-store" }),
+          fetch(ACCOUNTS_RECEIVABLE_CSV_URL, { cache: "no-store" }),
+          fetch(ACCOUNTS_PAYABLE_CSV_URL, { cache: "no-store" })
         ]);
         if (!projectsResponse.ok) throw new Error(`Projects feed failed: ${projectsResponse.status}`);
         if (!consultantsResponse.ok) throw new Error(`Consultants feed failed: ${consultantsResponse.status}`);
         if (!financialHistoryResponse.ok) throw new Error(`Financial history feed failed: ${financialHistoryResponse.status}`);
         if (!annualTaxSummaryResponse.ok) throw new Error(`Annual tax summary feed failed: ${annualTaxSummaryResponse.status}`);
-        const [projectsText, consultantsText, financialHistoryText, annualTaxSummaryText] = await Promise.all([projectsResponse.text(), consultantsResponse.text(), financialHistoryResponse.text(), annualTaxSummaryResponse.text()]);
+        if (!accountsReceivableResponse.ok) throw new Error(`Accounts receivable feed failed: ${accountsReceivableResponse.status}`);
+        if (!accountsPayableResponse.ok) throw new Error(`Accounts payable feed failed: ${accountsPayableResponse.status}`);
+        const [projectsText, consultantsText, financialHistoryText, annualTaxSummaryText, accountsReceivableText, accountsPayableText] = await Promise.all([projectsResponse.text(), consultantsResponse.text(), financialHistoryResponse.text(), annualTaxSummaryResponse.text(), accountsReceivableResponse.text(), accountsPayableResponse.text()]);
         const parsedProjects = parseCSV(projectsText).map(normalizeProject).filter((p) => p.jobNumber || p.jobName);
         const parsedConsultants = parseCSV(consultantsText).map(normalizeConsultant).filter((c) => c.jobNumber || c.consultant);
         const parsedFinancialHistory = parseCSV(financialHistoryText).map(normalizeFinancialHistory).filter((r) => r.year && r.quarter && Number.isFinite(r.grossRevenue));
         const parsedAnnualTaxSummary = parseCSV(annualTaxSummaryText).map(normalizeAnnualTaxSummary).filter((r) => r.year);
+        const parsedAccountsReceivable = parseCSV(accountsReceivableText).map(normalizeAccountsReceivable).filter((r) => r.jobNumber || r.invoiceNumber);
+        const parsedAccountsPayable = parseCSV(accountsPayableText).map(normalizeAccountsPayable).filter((r) => r.jobNumber || r.consultant);
         if (!parsedProjects.length) throw new Error("No project rows found.");
         setProjects(parsedProjects);
         setConsultants(parsedConsultants);
         if (parsedFinancialHistory.length) setFinancialHistory(parsedFinancialHistory);
         if (parsedAnnualTaxSummary.length) setAnnualTaxSummary(parsedAnnualTaxSummary);
+        if (parsedAccountsReceivable.length) setAccountsReceivable(parsedAccountsReceivable);
+        if (parsedAccountsPayable.length) setAccountsPayable(parsedAccountsPayable);
         setSelectedProjectId(parsedProjects[0].id);
         setFeedWarning("");
       } catch (err) {
@@ -340,6 +372,8 @@ export default function App() {
 
   const filteredProjects = useMemo(() => [...projectsWithConsultantTotals].filter((p) => (leadFilter === "All" ? true : p.lead === leadFilter)).filter((p) => (phaseFilter === "All" ? true : p.phase === phaseFilter)).sort((a, b) => String(a.jobNumber).localeCompare(String(b.jobNumber))), [projectsWithConsultantTotals, leadFilter, phaseFilter]);
   const selectedProject = projectsWithConsultantTotals.find((p) => p.id === selectedProjectId) || projectsWithConsultantTotals[0] || fallbackProjectsSeed[0];
+
+  const projectLookup = useMemo(() => Object.fromEntries(projectsWithConsultantTotals.map((p) => [String(p.jobNumber).trim(), p])), [projectsWithConsultantTotals]);
 
   const workloadRows = useMemo(() => {
     const grouped = projectsWithConsultantTotals.reduce((acc, project) => {
@@ -420,13 +454,36 @@ export default function App() {
   const bestYear = annualGrossRows.reduce((best, row) => (!best || row.value > best.value ? row : best), null);
   const bestOrdinaryIncomeYear = annualTaxRows.reduce((best, row) => (!best || row.value > best.value ? row : best), null);
 
-  const receivables = receivablesSeed.map((r) => { const ageDays = diffDays(r.date); return { ...r, ageDays, bucket: agingBucket(ageDays) }; });
-  const payables = payablesSeed.map((p) => { const ageDays = diffDays(p.date); return { ...p, ageDays, bucket: agingBucket(ageDays) }; });
+  const receivables = useMemo(() => accountsReceivable.map((r) => {
+    const project = projectLookup[String(r.jobNumber).trim()] || {};
+    const ageDays = diffDays(r.invoiceDate);
+    return {
+      ...r,
+      client: project.client || "",
+      project: project.jobName ? `${r.jobNumber} | ${project.jobName}` : r.jobNumber,
+      contractAmount: project.contractAmount || 0,
+      totalCollected: project.totalCollected || 0,
+      ageDays,
+      bucket: agingBucket(ageDays)
+    };
+  }).sort((a, b) => b.ageDays - a.ageDays), [accountsReceivable, projectLookup]);
+
+  const payables = useMemo(() => accountsPayable.map((p) => {
+    const project = projectLookup[String(p.jobNumber).trim()] || {};
+    const ageDays = diffDays(p.invoiceDate);
+    return {
+      ...p,
+      client: project.client || "",
+      project: project.jobName ? `${p.jobNumber} | ${project.jobName}` : p.jobNumber,
+      ageDays,
+      bucket: agingBucket(ageDays)
+    };
+  }).sort((a, b) => b.ageDays - a.ageDays), [accountsPayable, projectLookup]);
   const cashTotal = bankAccountsSeed.reduce((sum, a) => sum + a.balance, 0);
-  const currentAR = receivables.reduce((sum, r) => sum + r.amount, 0);
+  const currentAR = receivables.reduce((sum, r) => sum + r.invoiceAmount, 0);
   const currentAP = payables.reduce((sum, p) => sum + p.amount, 0);
   const arAgingRows = ["0-30", "31-60", "61-90", "90+"].map((bucket) => {
-    const value = receivables.filter((r) => r.bucket === bucket).reduce((sum, r) => sum + r.amount, 0);
+    const value = receivables.filter((r) => r.bucket === bucket).reduce((sum, r) => sum + r.invoiceAmount, 0);
     return { label: bucket, value, display: shortCurrency(value) };
   });
   const apAgingRows = ["0-30", "31-60", "61-90", "90+"].map((bucket) => {
@@ -452,7 +509,7 @@ export default function App() {
 
       (loading || feedWarning) ? React.createElement("div", { style: { ...card, background: loading ? "#eff6ff" : "#fff7ed", borderColor: loading ? "#bfdbfe" : "#fdba74" } },
         React.createElement("strong", null, loading ? "Loading live Google Sheets data..." : "Live feed warning"),
-        React.createElement("div", { style: { marginTop: 6, color: "#475569" } }, loading ? "The dashboard is pulling projects, consultants, financial history, and annual tax summary from Google Sheets." : feedWarning)
+        React.createElement("div", { style: { marginTop: 6, color: "#475569" } }, loading ? "The dashboard is pulling projects, consultants, financial history, annual tax summary, accounts receivable, and accounts payable from Google Sheets." : feedWarning)
       ) : null,
 
       tab === "projects" ? React.createElement(React.Fragment, null,
@@ -576,15 +633,15 @@ export default function App() {
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
           React.createElement("div", { style: { display: "grid", gap: 16 } },
             React.createElement("div", null,
-              React.createElement(SectionTitle, { title: "Accounts Receivable", subtitle: "Invoice dates and aging" }),
-              React.createElement(DataTable, { columns: [{ key: "client", label: "Client" }, { key: "project", label: "Project" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: receivables })
+              React.createElement(SectionTitle, { title: "Accounts Receivable", subtitle: "Live invoice list from accountsReceivable" }),
+              React.createElement(DataTable, { columns: [{ key: "client", label: "Client" }, { key: "project", label: "Project" }, { key: "invoiceNumber", label: "Invoice" }, { key: "invoiceDate", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "invoiceAmount", label: "Amount", render: (r) => currency(r.invoiceAmount) }], rows: receivables })
             ),
             React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "AR Aging", subtitle: "Collection pressure by bucket" }), React.createElement(SimpleBarChart, { rows: arAgingRows, color: "#16a34a" }))
           ),
           React.createElement("div", { style: { display: "grid", gap: 16 } },
             React.createElement("div", null,
-              React.createElement(SectionTitle, { title: "Accounts Payable", subtitle: "Vendor obligations" }),
-              React.createElement(DataTable, { columns: [{ key: "vendor", label: "Vendor" }, { key: "relatedTo", label: "Type" }, { key: "invoice", label: "Invoice" }, { key: "date", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: payables })
+              React.createElement(SectionTitle, { title: "Accounts Payable", subtitle: "Live payable list from accountsPayable" }),
+              React.createElement(DataTable, { columns: [{ key: "consultant", label: "Consultant" }, { key: "project", label: "Project" }, { key: "invoiceDate", label: "Date" }, { key: "ageDays", label: "Age", render: (r) => `${r.ageDays} days` }, { key: "amount", label: "Amount", render: (r) => currency(r.amount) }], rows: payables })
             ),
             React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "AP Aging", subtitle: "Vendor obligations by bucket" }), React.createElement(SimpleBarChart, { rows: apAgingRows, color: "#dc2626" }))
           )
