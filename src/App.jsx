@@ -482,6 +482,9 @@ export default function App() {
   const cashTotal = bankAccountsSeed.reduce((sum, a) => sum + a.balance, 0);
   const currentAR = receivables.reduce((sum, r) => sum + r.invoiceAmount, 0);
   const currentAP = payables.reduce((sum, p) => sum + p.amount, 0);
+  const netWorkingPosition = currentAR - currentAP;
+  const overdueAR = receivables.filter((r) => r.ageDays > 30).reduce((sum, r) => sum + r.invoiceAmount, 0);
+  const overdueAP = payables.filter((p) => p.ageDays > 30).reduce((sum, p) => sum + p.amount, 0);
   const arAgingRows = ["0-30", "31-60", "61-90", "90+"].map((bucket) => {
     const value = receivables.filter((r) => r.bucket === bucket).reduce((sum, r) => sum + r.invoiceAmount, 0);
     return { label: bucket, value, display: shortCurrency(value) };
@@ -492,6 +495,44 @@ export default function App() {
   });
   const proposalSummary = { submitted: proposalsSeed.filter((p) => p.status === "Submitted").length, shortlisted: proposalsSeed.filter((p) => p.status === "Shortlisted").length, won: proposalsSeed.filter((p) => p.status === "Won").length, lost: proposalsSeed.filter((p) => p.status === "Lost").length };
 
+  const currentMonthGrossPace = orderedFinancialHistory.length ? orderedFinancialHistory.slice(-1)[0].grossRevenue / 3 : 0;
+  const benchmarkRows = [60000, 80000, 100000, 150000].map((target) => ({
+    label: `$${Math.round(target / 1000)}k`,
+    value: currentMonthGrossPace - target,
+    display: `${shortCurrency(currentMonthGrossPace)} vs ${shortCurrency(target)}`
+  }));
+  const clientConcentrationRows = Object.entries(receivables.reduce((acc, r) => {
+    const key = r.client || '(Unassigned)';
+    acc[key] = (acc[key] || 0) + r.invoiceAmount;
+    return acc;
+  }, {})).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([label, value]) => ({ label, value, display: shortCurrency(value) }));
+  const consultantPressureRows = Object.entries(payables.reduce((acc, p) => {
+    const key = p.consultant || '(Unnamed)';
+    acc[key] = (acc[key] || 0) + p.amount;
+    return acc;
+  }, {})).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([label, value]) => ({ label, value, display: shortCurrency(value) }));
+  const projectMarginPressureRows = [...projectsWithConsultantTotals]
+    .filter((p) => p.contractAmount > 0)
+    .map((p) => ({
+      label: p.jobNumber,
+      value: (p.consultantContractTotal / p.contractAmount) * 100,
+      display: `${((p.consultantContractTotal / p.contractAmount) * 100 || 0).toFixed(1)}%`
+    }))
+    .sort((a,b)=>b.value-a.value)
+    .slice(0,6);
+  const revenueBandRows = [
+    { label: '< $50k', min: 0, max: 50000 },
+    { label: '$50k-$150k', min: 50000, max: 150000 },
+    { label: '$150k-$500k', min: 150000, max: 500000 },
+    { label: '$500k+', min: 500000, max: Infinity }
+  ].map((band) => {
+    const count = projectsWithConsultantTotals.filter((p) => p.contractAmount >= band.min && p.contractAmount < band.max).length;
+    return { label: band.label, value: count, display: String(count) };
+  });
+  const averageQuarterGross = orderedFinancialHistory.length ? orderedFinancialHistory.reduce((sum, r) => sum + r.grossRevenue, 0) / orderedFinancialHistory.length : 0;
+  const forecastNextQuarterGross = orderedFinancialHistory.length >= 4 ? trailingFourQuarterGross / 4 : averageQuarterGross;
+  const collectionFrictionIndex = currentAR ? Math.round(((overdueAR / currentAR) * 100) + ((receivables.length ? receivables.filter((r) => r.ageDays > 60).length / receivables.length : 0) * 40)) : 0;
+
   return React.createElement("div", { style: page },
     React.createElement("div", { style: container },
       React.createElement("header", { style: { display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-end", flexWrap: "wrap" } },
@@ -501,7 +542,7 @@ export default function App() {
           React.createElement("div", { style: { color: "#64748b", marginTop: 8, maxWidth: 860 } }, "Projects, workload, proposals, and financial command in one place. Project and consultant data are now tied live through job number.")
         ),
         React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
-          [["projects","Projects"],["workload","Workload"],["proposals","Proposals"],["financial","Financial"]].map(([key,label]) =>
+          [["projects","Projects"],["workload","Workload"],["proposals","Proposals"],["financial","Financial"],["history","Financial History"],["intelligence","Intelligence"]].map(([key,label]) =>
             React.createElement("button", { key, onClick: () => setTab(key), style: { borderRadius: 14, padding: "10px 16px", border: tab === key ? "1px solid #0f172a" : "1px solid #cbd5e1", background: tab === key ? "#0f172a" : "white", color: tab === key ? "white" : "#334155", cursor: "pointer", fontWeight: 600 } }, label)
           )
         )
@@ -517,8 +558,8 @@ export default function App() {
           React.createElement(MetricCard, { label: "Active Projects", value: projectsWithConsultantTotals.length, note: "Live from Google Sheets" }),
           React.createElement(MetricCard, { label: "Total Contracts", value: shortCurrency(totalContracts), note: "Signed project volume" }),
           React.createElement(MetricCard, { label: "Remaining to Bill", value: shortCurrency(totalRemaining), note: "Live billing runway" }),
-          React.createElement(MetricCard, { label: "Total Collected", value: shortCurrency(totalCollected), note: "Cash already received" }),
-          React.createElement(MetricCard, { label: "Consultant Exposure", value: shortCurrency(totalConsultantExposure), note: "Billed minus paid" })
+          React.createElement(MetricCard, { label: "Accounts Receivable", value: shortCurrency(currentAR), note: "Open client invoices" }),
+          React.createElement(MetricCard, { label: "Accounts Payable", value: shortCurrency(currentAP), note: "Open consultant/vendor bills" })
         ),
         React.createElement("div", { style: { ...card, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" } },
           React.createElement("div", null,
@@ -630,6 +671,13 @@ export default function App() {
       ) : null,
 
       tab === "financial" ? React.createElement(React.Fragment, null,
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 16 } },
+          React.createElement(MetricCard, { label: "Accounts Receivable", value: shortCurrency(currentAR), note: "Open client invoices" }),
+          React.createElement(MetricCard, { label: "Accounts Payable", value: shortCurrency(currentAP), note: "Open consultant/vendor bills" }),
+          React.createElement(MetricCard, { label: "Net Working Position", value: shortCurrency(netWorkingPosition), note: "AR minus AP" }),
+          React.createElement(MetricCard, { label: "Overdue Receivables", value: shortCurrency(overdueAR), note: "Invoices older than 30 days" }),
+          React.createElement(MetricCard, { label: "Overdue Payables", value: shortCurrency(overdueAP), note: "Bills older than 30 days" })
+        ),
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
           React.createElement("div", { style: { display: "grid", gap: 16 } },
             React.createElement("div", null,
@@ -646,32 +694,65 @@ export default function App() {
             React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "AP Aging", subtitle: "Vendor obligations by bucket" }), React.createElement(SimpleBarChart, { rows: apAgingRows, color: "#dc2626" }))
           )
         ),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Receivables by Client", subtitle: "Concentration of open client balances" }), React.createElement(SimpleBarChart, { rows: clientConcentrationRows.length ? clientConcentrationRows : [{ label: "None", value: 0, display: "$0" }], color: "#0f172a" })),
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Payables by Consultant", subtitle: "Current pressure by payee" }), React.createElement(SimpleBarChart, { rows: consultantPressureRows.length ? consultantPressureRows : [{ label: "None", value: 0, display: "$0" }], color: "#7c3aed" }))
+        )
+      ) : null,
+
+      tab === "history" ? React.createElement(React.Fragment, null,
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 16 } },
-          React.createElement(MetricCard, { label: "Cash in Bank", value: shortCurrency(cashTotal), note: "Across tracked accounts" }),
-          React.createElement(MetricCard, { label: "Current AR", value: shortCurrency(currentAR), note: "Earned but uncollected" }),
-          React.createElement(MetricCard, { label: "Trailing 4Q Gross", value: shortCurrency(trailingFourQuarterGross), note: "From financialHistory" }),
-          React.createElement(MetricCard, { label: "Best Quarter", value: bestQuarter ? bestQuarter.display : "$0", note: bestQuarter ? bestQuarter.label : "No data" }),
+          React.createElement(MetricCard, { label: "Highest Grossing Year", value: bestYear ? bestYear.display : "$0", note: bestYear ? bestYear.label : "No data" }),
+          React.createElement(MetricCard, { label: "Highest Quarter", value: bestQuarter ? bestQuarter.display : "$0", note: bestQuarter ? bestQuarter.label : "No data" }),
+          React.createElement(MetricCard, { label: "Trailing 4-Quarter Gross", value: shortCurrency(trailingFourQuarterGross), note: "Latest 12 months" }),
+          React.createElement(MetricCard, { label: "Most Recent OBI", value: annualTaxRows.length ? annualTaxRows[annualTaxRows.length - 1].display : "$0", note: annualTaxRows.length ? annualTaxRows[annualTaxRows.length - 1].label : "No data" }),
           React.createElement(MetricCard, { label: "Best OBI Year", value: bestOrdinaryIncomeYear ? bestOrdinaryIncomeYear.display : "$0", note: bestOrdinaryIncomeYear ? bestOrdinaryIncomeYear.label : "No data" })
         ),
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 24 } },
-          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Cash by Account", subtitle: "Current cash buckets" }), React.createElement(SimpleBarChart, { rows: bankAccountsSeed.map((a) => ({ label: a.name, value: a.balance, display: shortCurrency(a.balance) })), color: "#0f172a" })),
-          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Remaining Billing by Project", subtitle: "Largest live contract runway" }), React.createElement(SimpleBarChart, { rows: [...projectsWithConsultantTotals].sort((a, b) => b.remainingToBill - a.remainingToBill).slice(0, 5).map((p) => ({ label: p.jobNumber, value: p.remainingToBill, display: shortCurrency(p.remainingToBill) })), color: "#4f46e5" })),
-          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Consultant Exposure by Firm", subtitle: "Billed minus paid" }), React.createElement(SimpleBarChart, { rows: consultantExposureRows.length ? consultantExposureRows : [{ label: "None", value: 0, display: "$0" }], color: "#dc2626" }))
-        ),
+        React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Quarterly Gross Revenue", subtitle: "Live from financialHistory tab" }), React.createElement(SimpleBarChart, { rows: financialHistoryChartRows.length ? financialHistoryChartRows : [{ label: "No data", value: 0, display: "$0" }], color: "#0f172a" })),
         React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
           React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Annual Gross Revenue", subtitle: "Summed from quarterly history" }), React.createElement(SimpleBarChart, { rows: annualGrossRows.length ? annualGrossRows : [{ label: "No data", value: 0, display: "$0" }], color: "#4f46e5" })),
           React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Annual Ordinary Business Income", subtitle: "From annualTaxSummary tab" }), React.createElement(SimpleBarChart, { rows: annualTaxRows.length ? annualTaxRows : [{ label: "No data", value: 0, display: "$0" }], color: "#16a34a" }))
         ),
         React.createElement("div", { style: card },
-          React.createElement(SectionTitle, { title: "Financial History Notes", subtitle: "Owner-level context" }),
+          React.createElement(SectionTitle, { title: "History Notes", subtitle: "Context, not control" }),
           React.createElement("div", { style: { display: "grid", gap: 12, fontSize: 14, color: "#334155" } },
             React.createElement("div", null, React.createElement("strong", null, "Highest Grossing Year: "), bestYear ? `${bestYear.label} · ${bestYear.display}` : "No data"),
             React.createElement("div", null, React.createElement("strong", null, "Highest Quarter: "), bestQuarter ? `${bestQuarter.label} · ${bestQuarter.display}` : "No data"),
             React.createElement("div", null, React.createElement("strong", null, "Tax Metric: "), "Ordinary Business Income reflects filed S-corporation returns and may differ from internal management reporting."),
-            React.createElement("div", null, React.createElement("strong", null, "Data Structure: "), "Quarterly gross revenue comes from financialHistory. Annual OBI comes from annualTaxSummary.")
+            React.createElement("div", null, React.createElement("strong", null, "Run Rate: "), `Current trailing four-quarter gross is ${shortCurrency(trailingFourQuarterGross)}.`)
           )
+        )
+      ) : null,
+
+      tab === "intelligence" ? React.createElement(React.Fragment, null,
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 16 } },
+          React.createElement(MetricCard, { label: "Current Monthly Pace", value: shortCurrency(currentMonthGrossPace), note: "Based on latest quarter ÷ 3" }),
+          React.createElement(MetricCard, { label: "Average Quarter", value: shortCurrency(averageQuarterGross), note: "Historical quarterly mean" }),
+          React.createElement(MetricCard, { label: "Forecast Next Quarter", value: shortCurrency(forecastNextQuarterGross), note: "Trailing run-rate estimate" }),
+          React.createElement(MetricCard, { label: "Collection Friction Index", value: collectionFrictionIndex, note: "Higher means AR is aging poorly" }),
+          React.createElement(MetricCard, { label: "Cash + AR - AP", value: shortCurrency(cashTotal + currentAR - currentAP), note: "Near-term liquidity picture" })
         ),
-        React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Quarterly Gross Revenue", subtitle: "Live from financialHistory tab" }), React.createElement(SimpleBarChart, { rows: financialHistoryChartRows.length ? financialHistoryChartRows : [{ label: "No data", value: 0, display: "$0" }], color: "#0f172a" }))
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Revenue Pace vs Benchmarks", subtitle: "How current monthly pace compares to your benchmark tiers" }), React.createElement(SimpleBarChart, { rows: benchmarkRows, color: "#0f172a" })),
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Project Size Mix", subtitle: "How your active portfolio is distributed by fee band" }), React.createElement(SimpleBarChart, { rows: revenueBandRows, color: "#4f46e5" }))
+        ),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "AR Concentration by Client", subtitle: "Who controls the biggest share of your open receivables" }), React.createElement(SimpleBarChart, { rows: clientConcentrationRows.length ? clientConcentrationRows : [{ label: "None", value: 0, display: "$0" }], color: "#16a34a" })),
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "AP Pressure by Consultant", subtitle: "Which payees are creating the most immediate pressure" }), React.createElement(SimpleBarChart, { rows: consultantPressureRows.length ? consultantPressureRows : [{ label: "None", value: 0, display: "$0" }], color: "#dc2626" }))
+        ),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" } },
+          React.createElement("div", { style: card }, React.createElement(SectionTitle, { title: "Consultant Drag by Project", subtitle: "Consultant contract load as a share of total project contract" }), React.createElement(SimpleBarChart, { rows: projectMarginPressureRows.length ? projectMarginPressureRows : [{ label: "None", value: 0, display: "0%" }], color: "#7c3aed" })),
+          React.createElement("div", { style: card },
+            React.createElement(SectionTitle, { title: "What This Means", subtitle: "A sharper owner read from the same data" }),
+            React.createElement("div", { style: { display: "grid", gap: 12, fontSize: 14, color: "#334155" } },
+              React.createElement("div", null, React.createElement("strong", null, "Pace: "), `Current monthly pace is ${shortCurrency(currentMonthGrossPace)} against your benchmark ladder.`),
+              React.createElement("div", null, React.createElement("strong", null, "Concentration: "), clientConcentrationRows.length ? `${clientConcentrationRows[0].label} is your largest open AR concentration at ${clientConcentrationRows[0].display}.` : "No AR concentration visible."),
+              React.createElement("div", null, React.createElement("strong", null, "Pressure: "), consultantPressureRows.length ? `${consultantPressureRows[0].label} is your largest current AP pressure point at ${consultantPressureRows[0].display}.` : "No AP pressure visible."),
+              React.createElement("div", null, React.createElement("strong", null, "Forecast: "), `A simple run-rate estimate points to roughly ${shortCurrency(forecastNextQuarterGross)} for the next quarter.`),
+              React.createElement("div", null, React.createElement("strong", null, "Friction: "), `Collection Friction Index is ${collectionFrictionIndex}. That is ${collectionFrictionIndex >= 70 ? 'high' : collectionFrictionIndex >= 40 ? 'moderate' : 'controlled'}.`)
+            )
+          )
+        )
       ) : null
     )
   );
