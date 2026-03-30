@@ -1,140 +1,503 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { FEEDS } from './feedConfig';
 
-import React, { useEffect, useMemo, useState } from "react";
-
-const FEEDS = {
-  projectsCore: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9CslLnIzbOcl9Js5SZvBIZKs5gIL2iGtD1awEDVka56WtH4xV2adS7YDsyQmzD25zptAPyGpRp7RS/pub?gid=0&single=true&output=csv",
-  projectsFinancial: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9CslLnIzbOcl9Js5SZvBIZKs5gIL2iGtD1awEDVka56WtH4xV2adS7YDsyQmzD25zptAPyGpRp7RS/pub?gid=1232194860&single=true&output=csv",
-  accountsReceivable: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9CslLnIzbOcl9Js5SZvBIZKs5gIL2iGtD1awEDVka56WtH4xV2adS7YDsyQmzD25zptAPyGpRp7RS/pub?gid=23059435&single=true&output=csv",
-  consultants: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9CslLnIzbOcl9Js5SZvBIZKs5gIL2iGtD1awEDVka56WtH4xV2adS7YDsyQmzD25zptAPyGpRp7RS/pub?gid=1616168910&single=true&output=csv",
-  accountsPayable: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9CslLnIzbOcl9Js5SZvBIZKs5gIL2iGtD1awEDVka56WtH4xV2adS7YDsyQmzD25zptAPyGpRp7RS/pub?gid=1286562330&single=true&output=csv",
-  financialHistory: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9CslLnIzbOcl9Js5SZvBIZKs5gIL2iGtD1awEDVka56WtH4xV2adS7YDsyQmzD25zptAPyGpRp7RS/pub?gid=365200640&single=true&output=csv",
-  annualTaxSummary: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9CslLnIzbOcl9Js5SZvBIZKs5gIL2iGtD1awEDVka56WtH4xV2adS7YDsyQmzD25zptAPyGpRp7RS/pub?gid=1530050938&single=true&output=csv",
+const appShell = {
+  minHeight: '100vh',
+  background: '#f3f4f6',
+  color: '#111827',
+  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
 };
 
-const fallbackData = {
-  projectsCore: [{ id: 1, jobNumber: "2026-001", jobName: "Fallback Project", client: "Fallback Client", startDate: "2026-01-01", projectType: "Commercial", lead: "Sam", phase: "SD", status: "On Track", isArchived: "", archiveDate: "" }],
-  projectsFinancial: [{ id: 1, jobNumber: "2026-001", jobName: "Fallback Project", contractAmount: 100000, totalBilled: 40000, totalCollected: 30000, currentReceivable: 10000, remainingToBill: 60000, billingHealth: "warning", notes: "Fallback data" }],
-  accountsReceivable: [], consultants: [], accountsPayable: [], financialHistory: [], annualTaxSummary: []
+const topBar = {
+  padding: '20px 28px',
+  borderBottom: '1px solid #e5e7eb',
+  background: '#ffffff',
+  position: 'sticky',
+  top: 0,
+  zIndex: 5,
 };
 
-const page = { background: "#f8fafc", minHeight: "100vh", color: "#0f172a", fontFamily: "Inter, Arial, sans-serif", padding: "24px" };
-const container = { maxWidth: "1400px", margin: "0 auto", display: "grid", gap: "24px" };
-const card = { background: "white", border: "1px solid #e2e8f0", borderRadius: "18px", padding: "18px", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" };
-
-const billingBadgeStyles = {
-  healthy: { background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" },
-  warning: { background: "#fffbeb", color: "#b45309", border: "1px solid #fde68a" },
-  underwater: { background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" },
-};
-const statusPills = {
-  "On Track": { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" },
-  "Watch": { background: "#fefce8", color: "#a16207", border: "1px solid #fde68a" },
-  "Waiting on Owner": { background: "#fff7ed", color: "#c2410c", border: "1px solid #fdba74" },
-  "Waiting on Consultant": { background: "#faf5ff", color: "#7e22ce", border: "1px solid #e9d5ff" },
-  "Permit Review": { background: "#f0f9ff", color: "#0369a1", border: "1px solid #bae6fd" },
-  "Submittals": { background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" },
-  "Punchlist": { background: "#f8fafc", color: "#475569", border: "1px solid #cbd5e1" },
+const shellInner = {
+  maxWidth: '1500px',
+  margin: '0 auto',
+  padding: '24px 28px 40px',
 };
 
-function parseCSVLine(line) {
-  const result = []; let current = ""; let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i], next = line[i+1];
-    if (ch === '"') {
-      if (inQuotes && next === '"') { current += '"'; i++; } else { inQuotes = !inQuotes; }
-    } else if (ch === ',' && !inQuotes) { result.push(current); current = ""; }
-    else { current += ch; }
+const card = {
+  background: '#ffffff',
+  border: '1px solid #e5e7eb',
+  borderRadius: 16,
+  boxShadow: '0 4px 16px rgba(17,24,39,0.04)',
+};
+
+const muted = '#6b7280';
+const danger = '#b91c1c';
+
+function safeNumber(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  const cleaned = String(value).replace(/[$,%()\s,]/g, '').replace(/[—–-]+/g, '');
+  if (!cleaned) return 0;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
+function normalizeKey(key) {
+  return String(key || '')
+    .trim()
+    .replace(/^\ufeff/, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+
+function csvToRows(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push(cell);
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
   }
-  result.push(current); return result.map(v => v.trim());
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  if (!rows.length) return [];
+
+  const headers = rows[0].map((header) => String(header || '').trim());
+  return rows
+    .slice(1)
+    .filter((record) => record.some((value) => String(value || '').trim() !== ''))
+    .map((record) => {
+      const obj = {};
+      headers.forEach((header, index) => {
+        obj[header] = record[index] ?? '';
+      });
+      return obj;
+    });
 }
-function parseCSV(text) {
-  const lines = text.replace(/\r/g, "").split("\n").filter(Boolean); if (!lines.length) return [];
-  const headers = parseCSVLine(lines[0]);
-  return lines.slice(1).map((line, idx) => { const values = parseCSVLine(line); const row = { id: idx + 1 }; headers.forEach((h,i)=> row[h]=values[i] ?? ""); return row; });
+
+async function fetchCsv(url) {
+  if (!url || url.startsWith('PASTE_YOUR_')) return [];
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Feed failed: ${response.status}`);
+  const text = await response.text();
+  return csvToRows(text);
 }
-function toNumber(value, fallback=0){ if(value===undefined||value===null||value==="") return fallback; const cleaned=String(value).replace(/[$,]/g,""); const num=Number(cleaned); return Number.isFinite(num)?num:fallback; }
-function currency(value){ return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(value||0); }
-function shortCurrency(value){ const n=value||0; if(n>=1_000_000) return `$${(n/1_000_000).toFixed(2)}M`; if(n>=1000) return `$${Math.round(n/1000)}k`; return currency(n); }
-function parseDateSafe(value){ if(!value) return null; const d=new Date(value); return Number.isNaN(d.getTime())?null:d; }
-function monthsBetween(start,end){ if(!start||!end) return 0; let months=(end.getFullYear()-start.getFullYear())*12+(end.getMonth()-start.getMonth()); if(end.getDate()<start.getDate()) months -=1; return Math.max(0, months+1); }
-function agingBucket(days){ if(days<=30) return "0-30"; if(days<=60) return "31-60"; if(days<=90) return "61-90"; return "90+"; }
-function diffDays(dateString){ const today=new Date(); const d=parseDateSafe(dateString); if(!d) return 0; return Math.max(0, Math.floor((today-d)/(1000*60*60*24))); }
-function cleanText(v){ return String(v||"").trim(); }
-function asBoolArchived(v){ const t=cleanText(v).toLowerCase(); return t==="yes"||t==="true"||t==="1"||t==="archived"; }
-function normalizeProjectsCore(rows){ return rows.map((r,i)=>({id:r.id??i+1,jobNumber:cleanText(r.jobNumber),jobName:cleanText(r.jobName),client:cleanText(r.client),startDate:cleanText(r.startDate),projectType:cleanText(r.projectType),lead:cleanText(r.lead),phase:cleanText(r.phase),status:cleanText(r.status)||"On Track",isArchived:asBoolArchived(r.isArchived),archiveDate:cleanText(r.archiveDate)})).filter(r=>r.jobNumber||r.jobName); }
-function normalizeProjectsFinancial(rows){ return rows.map((r,i)=>({id:r.id??i+1,jobNumber:cleanText(r.jobNumber),jobName:cleanText(r.jobName),contractAmount:toNumber(r.contractAmount),totalBilled:toNumber(r.totalBilled),totalCollected:toNumber(r.totalCollected),currentReceivable:toNumber(r.currentReceivable),remainingToBill:toNumber(r.remainingToBill),billingHealth:cleanText(r.billingHealth).toLowerCase()||"warning",notes:cleanText(r.notes)})).filter(r=>r.jobNumber||r.jobName); }
-function normalizeAR(rows){ return rows.map((r,i)=>({id:r.id??i+1,jobNumber:cleanText(r.jobNumber),jobName:cleanText(r.jobName),invoiceNumber:cleanText(r.invoiceNumber),invoiceDate:cleanText(r.invoiceDate),invoiceAmount:toNumber(r.invoiceAmount),daysOutstanding:toNumber(r.daysOutstanding,diffDays(r.invoiceDate))})).filter(r=>r.jobNumber||r.invoiceNumber); }
-function normalizeConsultants(rows){ return rows.map((r,i)=>({id:r.id??i+1,jobNumber:cleanText(r.jobNumber),jobName:cleanText(r.jobName),discipline:cleanText(r.discipline),consultant:cleanText(r.consultant),contractAmount:toNumber(r.contractAmount),billedToDate:toNumber(r.billedToDate),paidToDate:toNumber(r.paidToDate),currentPayable:toNumber(r.currentPayable),futureBilling:toNumber(r.futureBilling)})).filter(r=>r.jobNumber||r.consultant); }
-function normalizeAP(rows){ return rows.map((r,i)=>({id:r.id??i+1,jobNumber:cleanText(r.jobNumber),jobName:cleanText(r.jobName),invoiceDate:cleanText(r.invoiceDate),consultant:cleanText(r.consultant),amount:toNumber(r.amount),daysOutstanding:toNumber(r.daysOutstanding,diffDays(r.invoiceDate))})).filter(r=>r.jobNumber||r.consultant); }
-function normalizeFinancialHistory(rows){ return rows.map((r,i)=>({id:r.id??i+1,year:toNumber(r.year),quarter:cleanText(r.quarter),grossRevenue:toNumber(r.grossRevenue),notes:cleanText(r.notes)})).filter(r=>r.year||r.quarter); }
-function normalizeTaxSummary(rows){ return rows.map((r,i)=>({id:r.id??i+1,year:toNumber(r.year),ordinaryBusinessIncome:toNumber(r.ordinaryBusinessIncome),notes:cleanText(r.notes)})).filter(r=>r.year); }
 
-function SectionTitle({ title, subtitle, action }){ return <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:12,flexWrap:"wrap",marginBottom:14}}><div><div style={{fontSize:22,fontWeight:700}}>{title}</div>{subtitle?<div style={{color:"#64748b",fontSize:14,marginTop:4}}>{subtitle}</div>:null}</div>{action||null}</div>; }
-function MetricCard({ label, value, note }){ return <div style={card}><div style={{fontSize:14,color:"#64748b"}}>{label}</div><div style={{fontSize:30,fontWeight:700,marginTop:8}}>{value}</div>{note?<div style={{fontSize:13,color:"#94a3b8",marginTop:8}}>{note}</div>:null}</div>; }
-function MonthSquares({ count }){ return <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{Array.from({length:count||0}).map((_,i)=><span key={i} style={{width:12,height:12,background:"#16a34a",borderRadius:2,display:"inline-block"}} />)}</div>; }
-function SimpleBarChart({ rows, color="#0f172a" }){ const max=Math.max(...rows.map(r=>r.value),1); return <div style={{display:"grid",gap:12}}>{rows.map(row=><div key={row.label}><div style={{display:"flex",justifyContent:"space-between",fontSize:14,marginBottom:6}}><span style={{color:"#475569"}}>{row.label}</span><span style={{color:"#64748b"}}>{row.display}</span></div><div style={{background:"#e2e8f0",height:10,borderRadius:999}}><div style={{width:`${(row.value/max)*100}%`,background:color,height:10,borderRadius:999}} /></div></div>)}</div>; }
-function DataTable({ columns, rows }){ return <div style={{...card,padding:0,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead style={{background:"#f8fafc",borderBottom:"1px solid #e2e8f0"}}><tr>{columns.map(col=><th key={col.key} style={{padding:"12px 14px",textAlign:"left",fontSize:12,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.05em"}}>{col.label}</th>)}</tr></thead><tbody>{rows.map((row,idx)=><tr key={row.id??idx} style={{borderBottom:"1px solid #f1f5f9"}}>{columns.map(col=><td key={col.key} style={{padding:"12px 14px",fontSize:14,color:"#334155",verticalAlign:"top"}}>{col.render?col.render(row):row[col.key]}</td>)}</tr>)}</tbody></table></div>; }
+function firstValue(row, options) {
+  if (!row) return '';
+  const entries = Object.entries(row);
+  for (const option of options) {
+    const target = normalizeKey(option);
+    const match = entries.find(([key]) => normalizeKey(key) === target);
+    if (match) return match[1];
+  }
+  return '';
+}
 
-export default function App(){
-  const [tab,setTab]=useState("projects");
-  const [showArchived,setShowArchived]=useState(false);
-  const [sortBy,setSortBy]=useState("jobNumber");
-  const [leadFilter,setLeadFilter]=useState("All");
-  const [phaseFilter,setPhaseFilter]=useState("All");
-  const [selectedProjectId,setSelectedProjectId]=useState(1);
-  const [loading,setLoading]=useState(true);
-  const [warning,setWarning]=useState("");
-  const [datasets,setDatasets]=useState(fallbackData);
+function resolveMetricValue(rows, explicitKeys = []) {
+  if (!rows.length) return 0;
 
-  useEffect(()=>{ async function loadAll(){ try{ setLoading(true); const entries=Object.entries(FEEDS); const responses=await Promise.all(entries.map(([,url])=>fetch(url,{cache:"no-store"}))); responses.forEach((res,i)=>{ if(!res.ok) throw new Error(`${entries[i][0]} failed: ${res.status}`);}); const texts=await Promise.all(responses.map(r=>r.text())); const raw={}; entries.forEach(([key],i)=> raw[key]=parseCSV(texts[i])); setDatasets({ projectsCore: normalizeProjectsCore(raw.projectsCore), projectsFinancial: normalizeProjectsFinancial(raw.projectsFinancial), accountsReceivable: normalizeAR(raw.accountsReceivable), consultants: normalizeConsultants(raw.consultants), accountsPayable: normalizeAP(raw.accountsPayable), financialHistory: normalizeFinancialHistory(raw.financialHistory), annualTaxSummary: normalizeTaxSummary(raw.annualTaxSummary) }); setSelectedProjectId(1); setWarning(""); } catch(err){ setWarning(`Live feed warning: ${err.message}. Showing fallback data where needed.`); } finally { setLoading(false);} } loadAll(); },[]);
+  const priorityKeys = [
+    ...explicitKeys,
+    'value',
+    'amount',
+    'total',
+    'sum',
+    'metricValue',
+    'metric',
+  ];
 
-  const { projectsCore, projectsFinancial, accountsReceivable, consultants, accountsPayable, financialHistory, annualTaxSummary } = datasets;
-  const financialByJob = useMemo(()=>Object.fromEntries(projectsFinancial.map(r=>[r.jobNumber,r])),[projectsFinancial]);
-  const consultantsByJob = useMemo(()=>{ const m={}; consultants.forEach(r=>{(m[r.jobNumber]||(m[r.jobNumber]=[])).push(r)}); return m; },[consultants]);
-  const receivablesByJob = useMemo(()=>{ const m={}; accountsReceivable.forEach(r=>{(m[r.jobNumber]||(m[r.jobNumber]=[])).push(r)}); return m; },[accountsReceivable]);
-  const payablesByJob = useMemo(()=>{ const m={}; accountsPayable.forEach(r=>{(m[r.jobNumber]||(m[r.jobNumber]=[])).push(r)}); return m; },[accountsPayable]);
+  const firstRow = rows[0];
+  const direct = firstValue(firstRow, priorityKeys);
+  if (direct !== '') return safeNumber(direct);
 
-  const mergedProjects = useMemo(()=>projectsCore.map(core=>{ const fin=financialByJob[core.jobNumber]||{}; const jobConsultants=consultantsByJob[core.jobNumber]||[]; const jobAR=receivablesByJob[core.jobNumber]||[]; const jobAP=payablesByJob[core.jobNumber]||[]; const consultantContractTotal=jobConsultants.reduce((s,c)=>s+c.contractAmount,0); const consultantBilledTotal=jobConsultants.reduce((s,c)=>s+c.billedToDate,0); const consultantPaidTotal=jobConsultants.reduce((s,c)=>s+c.paidToDate,0); const consultantCurrentPayable=jobConsultants.reduce((s,c)=>s+c.currentPayable,0); const consultantFutureBilling=jobConsultants.reduce((s,c)=>s+c.futureBilling,0); const arTotal=jobAR.reduce((s,r)=>s+r.invoiceAmount,0); const apTotal=jobAP.reduce((s,p)=>s+p.amount,0); const start=parseDateSafe(core.startDate); const end=core.isArchived ? parseDateSafe(core.archiveDate) : new Date(); return { ...core, contractAmount: fin.contractAmount||0, totalBilled: fin.totalBilled||0, totalCollected: fin.totalCollected||0, currentReceivable: fin.currentReceivable||arTotal||0, remainingToBill: fin.remainingToBill||0, billingHealth: (fin.billingHealth||"warning").toLowerCase(), financialNotes: fin.notes||"", jobConsultants, jobReceivables: jobAR, jobPayables: jobAP, consultantContractTotal, consultantBilledTotal, consultantPaidTotal, consultantCurrentPayable, consultantFutureBilling, arTotal, apTotal, architectNetFee: (fin.contractAmount||0)-consultantContractTotal, monthsActive: monthsBetween(start,end) }; }),[projectsCore,financialByJob,consultantsByJob,receivablesByJob,payablesByJob]);
+  const numericValues = Object.values(firstRow)
+    .map((value) => safeNumber(value))
+    .filter((value) => value !== 0);
 
-  const leadOptions=["All",...Array.from(new Set(mergedProjects.map(p=>p.lead).filter(Boolean))).sort()];
-  const phaseOptions=["All",...Array.from(new Set(mergedProjects.map(p=>p.phase).filter(Boolean))).sort()];
-  const visibleProjects = useMemo(()=>{ let rows=mergedProjects.filter(p=>showArchived || !p.isArchived); if(leadFilter!=="All") rows=rows.filter(p=>p.lead===leadFilter); if(phaseFilter!=="All") rows=rows.filter(p=>p.phase===phaseFilter); rows=[...rows].sort((a,b)=> sortBy==="jobName" ? a.jobName.localeCompare(b.jobName) : a.jobNumber.localeCompare(b.jobNumber)); return rows; },[mergedProjects,showArchived,leadFilter,phaseFilter,sortBy]);
-  useEffect(()=>{ if(visibleProjects.length){ if(!visibleProjects.find(p=>p.id===selectedProjectId)) setSelectedProjectId(visibleProjects[0].id); } },[visibleProjects,selectedProjectId]);
-  const selectedProject = visibleProjects.find(p=>p.id===selectedProjectId) || visibleProjects[0] || mergedProjects[0];
+  return numericValues[0] ?? 0;
+}
 
-  const phaseOrder=["SD","DD","CD","BN","CA"]; const phaseCounts=visibleProjects.reduce((acc,p)=>{ const ph=(p.phase||"").trim()||"Unassigned"; acc[ph]=(acc[ph]||0)+1; return acc; },{}); const phaseDistribution=[...phaseOrder.filter(ph=>phaseCounts[ph]).map(ph=>({label:ph,value:phaseCounts[ph],display:phaseCounts[ph]})), ...Object.entries(phaseCounts).filter(([ph])=>!phaseOrder.includes(ph)).sort(([a],[b])=>a.localeCompare(b)).map(([label,value])=>({label,value,display:value}))];
-  const workloadRows = useMemo(()=>{ const grouped=visibleProjects.reduce((acc,p)=>{ const key=p.lead||"(Unassigned)"; if(!acc[key]) acc[key]={id:key,lead:key,totalProjects:0,phases:{},contractAmount:0,remainingToBill:0}; acc[key].totalProjects+=1; acc[key].contractAmount+=p.contractAmount; acc[key].remainingToBill+=p.remainingToBill; acc[key].phases[p.phase||"Unassigned"]=(acc[key].phases[p.phase||"Unassigned"]||0)+1; return acc; },{}); return Object.values(grouped).map(row=>({...row,phaseMix:Object.entries(row.phases).sort((a,b)=>{const ai=phaseOrder.indexOf(a[0]), bi=phaseOrder.indexOf(b[0]); if(ai===-1&&bi===-1) return a[0].localeCompare(b[0]); if(ai===-1) return 1; if(bi===-1) return -1; return ai-bi;}).map(([p,c])=>`${c} ${p}`).join(" · ")})).sort((a,b)=>b.totalProjects-a.totalProjects); },[visibleProjects]);
+function DetailRow({ label, children }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ fontWeight: 700 }}>{label}:</div>
+      <div>{children || '—'}</div>
+    </div>
+  );
+}
 
-  const totalContracts=visibleProjects.reduce((s,p)=>s+p.contractAmount,0); const totalRemaining=visibleProjects.reduce((s,p)=>s+p.remainingToBill,0); const totalCollected=visibleProjects.reduce((s,p)=>s+p.totalCollected,0); const totalCurrentReceivable=visibleProjects.reduce((s,p)=>s+p.currentReceivable,0); const totalConsultantPayable=visibleProjects.reduce((s,p)=>s+p.consultantCurrentPayable,0);
-  const arAgingRows=["0-30","31-60","61-90","90+"].map(bucket=>{ const value=accountsReceivable.filter(r=>agingBucket(r.daysOutstanding)===bucket).reduce((s,r)=>s+r.invoiceAmount,0); return {label:bucket,value,display:shortCurrency(value)}; });
-  const consultantExposureRows = useMemo(()=>{ const grouped=consultants.reduce((acc,c)=>{ const key=c.consultant||"(Unnamed)"; acc[key]=(acc[key]||0)+c.currentPayable; return acc; },{}); return Object.entries(grouped).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([label,value])=>({label,value,display:shortCurrency(value)})); },[consultants]);
-  const revenueHistoryRows = useMemo(()=>financialHistory.sort((a,b)=>(a.year-b.year)||a.quarter.localeCompare(b.quarter)).map(r=>({label:`${r.year} ${r.quarter}`,value:r.grossRevenue,display:shortCurrency(r.grossRevenue)})).slice(-8),[financialHistory]);
-  const taxSummaryRows = useMemo(()=>annualTaxSummary.sort((a,b)=>a.year-b.year).map(r=>({label:String(r.year),value:r.ordinaryBusinessIncome,display:shortCurrency(r.ordinaryBusinessIncome)})).slice(-6),[annualTaxSummary]);
-
-  return <div style={page}><div style={container}>
-    <header style={{display:"flex",justifyContent:"space-between",gap:16,alignItems:"flex-end",flexWrap:"wrap"}}><div><div style={{fontSize:12,textTransform:"uppercase",letterSpacing:"0.22em",color:"#64748b"}}>Sam Garcia Architect</div><h1 style={{fontSize:40,margin:"8px 0 0 0"}}>SGA Operating Dashboard</h1><div style={{color:"#64748b",marginTop:8,maxWidth:960}}>Live dashboard fed by projects, financials, consultants, receivables, payables, revenue history, and tax summary.</div></div><div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{[["projects","Projects"],["workload","Workload"],["financial","Financial"]].map(([key,label])=><button key={key} onClick={()=>setTab(key)} style={{borderRadius:14,padding:"10px 16px",border:tab===key?"1px solid #0f172a":"1px solid #cbd5e1",background:tab===key?"#0f172a":"white",color:tab===key?"white":"#334155",cursor:"pointer",fontWeight:600}}>{label}</button>)}</div></header>
-    {(loading||warning)?<div style={{...card,background:loading?"#eff6ff":"#fff7ed",borderColor:loading?"#bfdbfe":"#fdba74"}}><strong>{loading?"Loading live Google Sheets data...":"Live feed warning"}</strong><div style={{marginTop:6,color:"#475569"}}>{loading?"The dashboard is pulling all published tabs from Google Sheets.":warning}</div></div>:null}
-
-    {tab==="projects" ? <>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5, minmax(0, 1fr))",gap:16}}>
-        <MetricCard label="Active Projects" value={visibleProjects.length} note={showArchived?"Including archived":"Archived hidden"} />
-        <MetricCard label="Total Contracts" value={shortCurrency(totalContracts)} note="Visible projects" />
-        <MetricCard label="Total Collected" value={shortCurrency(totalCollected)} note="Owner cash received" />
-        <MetricCard label="Current Receivable" value={shortCurrency(totalCurrentReceivable)} note="Open owner-side balance" />
-        <MetricCard label="Consultant Payable" value={shortCurrency(totalConsultantPayable)} note="Current consultant exposure" />
+function MetricCard({ label, value }) {
+  return (
+    <div style={{ ...card, padding: 18 }}>
+      <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: muted, marginBottom: 8 }}>
+        {label}
       </div>
-      <div style={{...card,display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,flexWrap:"wrap"}}><div><div style={{color:"#64748b",fontSize:14}}>Board Controls</div><div style={{fontWeight:600,marginTop:4}}>Archive filter, sort logic, and team filters</div></div><div style={{display:"flex",gap:12,flexWrap:"wrap"}}><label style={{display:"flex",alignItems:"center",gap:8,fontSize:14}}><input type="checkbox" checked={showArchived} onChange={e=>setShowArchived(e.target.checked)} />Show Archived</label><select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{padding:"10px 14px",borderRadius:12,border:"1px solid #cbd5e1"}}><option value="jobNumber">Sort: Job Number</option><option value="jobName">Sort: Job Name</option></select><select value={leadFilter} onChange={e=>setLeadFilter(e.target.value)} style={{padding:"10px 14px",borderRadius:12,border:"1px solid #cbd5e1"}}>{leadOptions.map(opt=><option key={opt}>{opt}</option>)}</select><select value={phaseFilter} onChange={e=>setPhaseFilter(e.target.value)} style={{padding:"10px 14px",borderRadius:12,border:"1px solid #cbd5e1"}}>{phaseOptions.map(opt=><option key={opt}>{opt}</option>)}</select></div></div>
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:24,alignItems:"start"}}>
-        <div style={card}><SectionTitle title="Project Board" subtitle="Lean board with visible operational and financial signals." /><div style={{display:"grid",gap:10}}>{visibleProjects.map(project=><button key={project.id} onClick={()=>setSelectedProjectId(project.id)} style={{width:"100%",textAlign:"left",borderRadius:14,border:selectedProjectId===project.id?"1px solid #0f172a":"1px solid #e2e8f0",padding:"12px 14px",background:selectedProjectId===project.id?"#f8fafc":"white",cursor:"pointer"}}><div style={{display:"grid",gridTemplateColumns:"1.1fr 2.2fr 1fr 0.8fr 2fr",gap:12,alignItems:"center"}}><div style={{fontWeight:700}}>{project.jobNumber}</div><div style={{fontWeight:600}}>{project.jobName}</div><div style={{fontSize:14,color:"#475569"}}>{project.lead}</div><div style={{fontSize:14,color:"#475569"}}>{project.phase}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8,flexWrap:"wrap"}}><span style={{...(statusPills[project.status]||statusPills["On Track"]),padding:"4px 8px",borderRadius:999,fontSize:12,fontWeight:700}}>{project.status}</span><span style={{...(billingBadgeStyles[project.billingHealth]||billingBadgeStyles.warning),padding:"4px 8px",borderRadius:999,fontSize:12,fontWeight:700}}>● {project.billingHealth.charAt(0).toUpperCase()+project.billingHealth.slice(1)}</span></div></div></button>)}</div></div>
-        <div style={{display:"grid",gap:24}}>
-          <div style={card}><SectionTitle title="Project Detail" subtitle="Owner-side and consultant-side economics." />{selectedProject?<div style={{display:"grid",gap:16}}><div><div style={{fontSize:22,fontWeight:700}}>{selectedProject.jobNumber}</div><div style={{fontSize:26,fontWeight:700,marginTop:4}}>{selectedProject.jobName}</div><div style={{color:"#64748b",marginTop:4}}>{selectedProject.client}</div></div><div><div style={{fontSize:14,color:"#94a3b8",marginBottom:8}}>Project Age</div><MonthSquares count={selectedProject.monthsActive} /><div style={{fontSize:12,color:"#64748b",marginTop:8}}>{selectedProject.monthsActive} active months{selectedProject.isArchived&&selectedProject.archiveDate?` · archived ${selectedProject.archiveDate}`:""}</div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,fontSize:14}}><div><div style={{color:"#94a3b8"}}>Lead</div><div style={{fontWeight:600,marginTop:4}}>{selectedProject.lead}</div></div><div><div style={{color:"#94a3b8"}}>Project Type</div><div style={{fontWeight:600,marginTop:4}}>{selectedProject.projectType}</div></div><div><div style={{color:"#94a3b8"}}>Phase</div><div style={{fontWeight:600,marginTop:4}}>{selectedProject.phase}</div></div><div><div style={{color:"#94a3b8"}}>Status / Billing</div><div style={{fontWeight:600,marginTop:4}}>{selectedProject.status} / {selectedProject.billingHealth}</div></div></div><div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:14,padding:14}}><div style={{fontSize:12,textTransform:"uppercase",letterSpacing:"0.05em",color:"#94a3b8"}}>Project Financials</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12,fontSize:14}}><div><div style={{color:"#94a3b8"}}>Contract Amount</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.contractAmount)}</div></div><div><div style={{color:"#94a3b8"}}>Architect Net Fee</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.architectNetFee)}</div></div><div><div style={{color:"#94a3b8"}}>Total Billed</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.totalBilled)}</div></div><div><div style={{color:"#94a3b8"}}>Total Collected</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.totalCollected)}</div></div><div><div style={{color:"#94a3b8"}}>Current Receivable</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.currentReceivable)}</div></div><div><div style={{color:"#94a3b8"}}>Remaining to Bill</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.remainingToBill)}</div></div><div style={{gridColumn:"1 / span 2"}}><div style={{color:"#94a3b8"}}>Financial Notes</div><div style={{fontWeight:500,marginTop:4}}>{selectedProject.financialNotes||"-"}</div></div></div></div><div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:14,padding:14}}><div style={{fontSize:12,textTransform:"uppercase",letterSpacing:"0.05em",color:"#94a3b8"}}>Consultant Summary</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12,fontSize:14}}><div><div style={{color:"#94a3b8"}}>Consultant Contracts</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.consultantContractTotal)}</div></div><div><div style={{color:"#94a3b8"}}>Consultants Billed</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.consultantBilledTotal)}</div></div><div><div style={{color:"#94a3b8"}}>Consultants Paid</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.consultantPaidTotal)}</div></div><div><div style={{color:"#94a3b8"}}>Current Payable</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.consultantCurrentPayable)}</div></div><div style={{gridColumn:"1 / span 2"}}><div style={{color:"#94a3b8"}}>Future Consultant Billing</div><div style={{fontWeight:700,marginTop:4}}>{currency(selectedProject.consultantFutureBilling)}</div></div></div></div><div><div style={{fontSize:14,color:"#94a3b8",marginBottom:8}}>Consultants on This Project</div><div style={{display:"grid",gap:8}}>{selectedProject.jobConsultants.length?selectedProject.jobConsultants.map(c=><div key={c.id} style={{border:"1px solid #e2e8f0",borderRadius:12,padding:10,fontSize:14}}><div style={{fontWeight:600}}>{c.discipline} · {c.consultant}</div><div style={{color:"#64748b",marginTop:4}}>Contract {currency(c.contractAmount)} · Billed {currency(c.billedToDate)} · Paid {currency(c.paidToDate)} · Current Payable {currency(c.currentPayable)} · Future {currency(c.futureBilling)}</div></div>):<div style={{color:"#64748b",fontSize:14}}>No consultants listed for this project.</div>}</div></div></div>:null}</div>
-          <div style={card}><SectionTitle title="Phase Distribution" subtitle="Ordered SD → DD → CD → BN → CA" /><SimpleBarChart rows={phaseDistribution.length?phaseDistribution:[{label:"No Data",value:0,display:0}]} color="#0f172a" /></div>
+      <div style={{ fontSize: 28, fontWeight: 800 }}>{value}</div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('projects');
+  const [loading, setLoading] = useState(true);
+  const [loadErrors, setLoadErrors] = useState([]);
+  const [projectsCore, setProjectsCore] = useState([]);
+  const [consultants, setConsultants] = useState([]);
+  const [projectsNotes, setProjectsNotes] = useState([]);
+  const [currentReceivableRows, setCurrentReceivableRows] = useState([]);
+  const [futureReceivableRows, setFutureReceivableRows] = useState([]);
+  const [accountsPayableRows, setAccountsPayableRows] = useState([]);
+  const [futurePayableRows, setFuturePayableRows] = useState([]);
+  const [selectedJobNumber, setSelectedJobNumber] = useState('');
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAll() {
+      setLoading(true);
+      const errors = [];
+
+      async function loadOne(label, url, setter) {
+        try {
+          const rows = await fetchCsv(url);
+          if (isMounted) setter(rows);
+        } catch (error) {
+          errors.push(`${label}: ${error.message}`);
+          if (isMounted) setter([]);
+        }
+      }
+
+      await Promise.all([
+        loadOne('projectsCore', FEEDS.projectsCore, setProjectsCore),
+        loadOne('consultants', FEEDS.consultants, setConsultants),
+        loadOne('projectsNotes', FEEDS.projectsNotes, setProjectsNotes),
+        loadOne('currentReceivable', FEEDS.currentReceivable, setCurrentReceivableRows),
+        loadOne('futureReceivable', FEEDS.futureReceivable, setFutureReceivableRows),
+        loadOne('accountsPayable', FEEDS.accountsPayable, setAccountsPayableRows),
+        loadOne('futurePayable', FEEDS.futurePayable, setFuturePayableRows),
+      ]);
+
+      if (isMounted) {
+        setLoadErrors(errors);
+        setLoading(false);
+      }
+    }
+
+    loadAll();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedJobNumber && projectsCore.length) {
+      const first = firstValue(projectsCore[0], ['jobNumber', 'jobnumber']);
+      setSelectedJobNumber(first);
+    }
+  }, [projectsCore, selectedJobNumber]);
+
+  const filteredProjects = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return projectsCore.filter((row) => {
+      if (!term) return true;
+      const haystack = [
+        firstValue(row, ['jobNumber', 'jobnumber']),
+        firstValue(row, ['jobName', 'jobname']),
+        firstValue(row, ['client']),
+        firstValue(row, ['status']),
+        firstValue(row, ['phase']),
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [projectsCore, search]);
+
+  const selectedProject = useMemo(() => {
+    return (
+      projectsCore.find(
+        (row) =>
+          String(firstValue(row, ['jobNumber', 'jobnumber'])).trim() === String(selectedJobNumber).trim()
+      ) || filteredProjects[0] || null
+    );
+  }, [projectsCore, filteredProjects, selectedJobNumber]);
+
+  const selectedProjectJobNumber = firstValue(selectedProject, ['jobNumber', 'jobnumber']);
+
+  const selectedNote = useMemo(() => {
+    return (
+      projectsNotes.find(
+        (row) =>
+          String(firstValue(row, ['jobNumber', 'jobnumber'])).trim() === String(selectedProjectJobNumber).trim()
+      ) || null
+    );
+  }, [projectsNotes, selectedProjectJobNumber]);
+
+  const projectConsultants = useMemo(() => {
+    if (!selectedProjectJobNumber) return [];
+    return consultants.filter(
+      (row) =>
+        String(firstValue(row, ['jobNumber', 'jobnumber'])).trim() === String(selectedProjectJobNumber).trim()
+    );
+  }, [consultants, selectedProjectJobNumber]);
+
+  const visibleContracts = useMemo(() => {
+    return projectsCore.reduce((sum, row) => {
+      return sum + safeNumber(firstValue(row, ['contractAmount', 'contractamount', 'visibleContracts', 'visiblecontracts']));
+    }, 0);
+  }, [projectsCore]);
+
+  const currentReceivable = useMemo(
+    () => resolveMetricValue(currentReceivableRows, ['currentReceivable', 'currentreceivable']),
+    [currentReceivableRows]
+  );
+  const futureReceivable = useMemo(
+    () => resolveMetricValue(futureReceivableRows, ['futureReceivable', 'futurereceivable']),
+    [futureReceivableRows]
+  );
+  const accountsPayable = useMemo(
+    () => resolveMetricValue(accountsPayableRows, ['accountsPayable', 'accountspayable']),
+    [accountsPayableRows]
+  );
+  const futurePayable = useMemo(
+    () => resolveMetricValue(futurePayableRows, ['futurePayable', 'futurepayable']),
+    [futurePayableRows]
+  );
+
+  const currentNotes = String(firstValue(selectedNote, ['notes']) || '').trim();
+  const estimatedDuration = String(firstValue(selectedProject, ['estimatedDuration', 'estimatedduration']) || '').trim();
+
+  return (
+    <div style={appShell}>
+      <div style={topBar}>
+        <div style={{ maxWidth: '1500px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: muted, marginBottom: 6 }}>
+              Sam Garcia Architect
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>SGA Operating Dashboard</div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {[
+              ['projects', 'Projects'],
+              ['financial', 'Financial'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveTab(key)}
+                style={{
+                  border: activeTab === key ? '1px solid #111827' : '1px solid #d1d5db',
+                  background: activeTab === key ? '#111827' : '#ffffff',
+                  color: activeTab === key ? '#ffffff' : '#111827',
+                  borderRadius: 999,
+                  padding: '10px 16px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </> : null}
 
-    {tab==="workload" ? <><div style={{display:"grid",gridTemplateColumns:"repeat(4, minmax(0, 1fr))",gap:16}}>{["Jose","Zuri","Sergio","Sam"].map(name=>{ const row=workloadRows.find(r=>r.lead===name); return <MetricCard key={name} label={name} value={row?row.totalProjects:0} note={row?row.phaseMix:"No projects"} />; })}</div><SectionTitle title="Current Workload by Person" subtitle="Visible projects only, respecting archive filter." /><DataTable columns={[{key:"lead",label:"Person"},{key:"totalProjects",label:"Active Projects"},{key:"phaseMix",label:"Phase Mix"},{key:"contractAmount",label:"Contract Volume",render:r=>currency(r.contractAmount)},{key:"remainingToBill",label:"Remaining to Bill",render:r=>currency(r.remainingToBill)}]} rows={workloadRows} /></> : null}
+      <div style={shellInner}>
+        {loadErrors.length > 0 && (
+          <div style={{ ...card, padding: 16, marginBottom: 18, borderColor: '#f59e0b', background: '#fffbeb' }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>Feed warning</div>
+            <div style={{ color: '#92400e', lineHeight: 1.5 }}>
+              One or more feeds did not load. The notes feed is wired. The other feed URLs may need to match your existing published CSV links.
+            </div>
+            <div style={{ color: '#92400e', fontSize: 13, marginTop: 8, whiteSpace: 'pre-wrap' }}>{loadErrors.join('\n')}</div>
+          </div>
+        )}
 
-    {tab==="financial" ? <><div style={{display:"grid",gridTemplateColumns:"repeat(5, minmax(0, 1fr))",gap:16}}><MetricCard label="Visible Contracts" value={shortCurrency(totalContracts)} note="Projects in current filter" /><MetricCard label="Current Receivable" value={shortCurrency(totalCurrentReceivable)} note="Owner-side open balance" /><MetricCard label="Consultant Payable" value={shortCurrency(totalConsultantPayable)} note="Project-level consultant liability" /><MetricCard label="Accounts Receivable" value={shortCurrency(accountsReceivable.reduce((s,r)=>s+r.invoiceAmount,0))} note="All AR ledger rows" /><MetricCard label="Accounts Payable" value={shortCurrency(accountsPayable.reduce((s,p)=>s+p.amount,0))} note="All AP ledger rows" /></div><div style={{display:"grid",gridTemplateColumns:"repeat(4, minmax(0, 1fr))",gap:24}}><div style={card}><SectionTitle title="AR Aging" subtitle="Open receivables by age bucket" /><SimpleBarChart rows={arAgingRows} color="#16a34a" /></div><div style={card}><SectionTitle title="Consultant Exposure by Firm" subtitle="Current payable grouped by consultant" /><SimpleBarChart rows={consultantExposureRows.length?consultantExposureRows:[{label:"None",value:0,display:"$0"}]} color="#dc2626" /></div><div style={card}><SectionTitle title="Quarterly Gross Revenue" subtitle="From financial_history" /><SimpleBarChart rows={revenueHistoryRows.length?revenueHistoryRows:[{label:"None",value:0,display:"$0"}]} color="#4f46e5" /></div><div style={card}><SectionTitle title="Annual Ordinary Income" subtitle="From annual_tax_summary" /><SimpleBarChart rows={taxSummaryRows.length?taxSummaryRows:[{label:"None",value:0,display:"$0"}]} color="#0f766e" /></div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}><div><SectionTitle title="Accounts Receivable" subtitle="Ledger rows from accounts_receivable" /><DataTable columns={[{key:"jobNumber",label:"Job #"},{key:"jobName",label:"Job Name"},{key:"invoiceNumber",label:"Invoice #"},{key:"invoiceDate",label:"Invoice Date"},{key:"daysOutstanding",label:"Days",render:r=>`${r.daysOutstanding}`},{key:"invoiceAmount",label:"Amount",render:r=>currency(r.invoiceAmount)}]} rows={accountsReceivable} /></div><div><SectionTitle title="Accounts Payable" subtitle="Ledger rows from accounts_payable" /><DataTable columns={[{key:"jobNumber",label:"Job #"},{key:"jobName",label:"Job Name"},{key:"invoiceDate",label:"Invoice Date"},{key:"consultant",label:"Consultant"},{key:"daysOutstanding",label:"Days",render:r=>`${r.daysOutstanding}`},{key:"amount",label:"Amount",render:r=>currency(r.amount)}]} rows={accountsPayable} /></div></div></> : null}
-  </div></div>;
+        {activeTab === 'projects' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '380px minmax(0, 1fr)', gap: 20 }}>
+            <div style={{ ...card, padding: 16, alignSelf: 'start' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>Projects</div>
+                <div style={{ fontSize: 13, color: muted }}>{filteredProjects.length} visible</div>
+              </div>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by job, client, phase, or status"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 12, border: '1px solid #d1d5db', marginBottom: 14 }}
+              />
+              <div style={{ display: 'grid', gap: 10, maxHeight: '72vh', overflow: 'auto', paddingRight: 4 }}>
+                {filteredProjects.map((row) => {
+                  const jobNumber = firstValue(row, ['jobNumber', 'jobnumber']);
+                  const jobName = firstValue(row, ['jobName', 'jobname']) || 'Untitled Project';
+                  const client = firstValue(row, ['client']) || '—';
+                  const phase = firstValue(row, ['phase']) || '—';
+                  const status = firstValue(row, ['status']) || '—';
+                  const isActive = String(jobNumber) === String(selectedProjectJobNumber);
+
+                  return (
+                    <button
+                      type="button"
+                      key={`${jobNumber}-${jobName}`}
+                      onClick={() => setSelectedJobNumber(jobNumber)}
+                      style={{
+                        textAlign: 'left',
+                        padding: 14,
+                        borderRadius: 14,
+                        border: isActive ? '1px solid #111827' : '1px solid #e5e7eb',
+                        background: isActive ? '#f9fafb' : '#ffffff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ fontSize: 12, color: muted, marginBottom: 5 }}>{jobNumber || '—'}</div>
+                      <div style={{ fontWeight: 800, marginBottom: 6 }}>{jobName}</div>
+                      <div style={{ fontSize: 13, color: muted, marginBottom: 8 }}>{client}</div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, background: '#eef2ff', color: '#3730a3', padding: '4px 8px', borderRadius: 999 }}>{phase}</span>
+                        <span style={{ fontSize: 12, background: '#f3f4f6', color: '#374151', padding: '4px 8px', borderRadius: 999 }}>{status}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 20, alignSelf: 'start' }}>
+              <div style={{ ...card, padding: 22 }}>
+                {selectedProject ? (
+                  <>
+                    <div style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: muted, marginBottom: 6 }}>
+                      Project Detail
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.1, marginBottom: 6 }}>
+                          {firstValue(selectedProject, ['jobName', 'jobname']) || 'Untitled Project'}
+                        </div>
+                        <div style={{ color: muted, fontSize: 16, marginBottom: 14 }}>
+                          {firstValue(selectedProject, ['client']) || '—'}
+                        </div>
+
+                        <div style={{ marginBottom: 14 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: danger, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                            Current Notes
+                          </div>
+                          <div style={{ color: danger, lineHeight: 1.6, whiteSpace: 'pre-wrap', minHeight: 24 }}>
+                            {currentNotes || '—'}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          <DetailRow label="Job Number">{firstValue(selectedProject, ['jobNumber', 'jobnumber']) || '—'}</DetailRow>
+                          <DetailRow label="Project Type">{firstValue(selectedProject, ['projectType', 'projecttype']) || '—'}</DetailRow>
+                          <DetailRow label="Lead">{firstValue(selectedProject, ['lead']) || '—'}</DetailRow>
+                          <DetailRow label="Phase">{firstValue(selectedProject, ['phase']) || '—'}</DetailRow>
+                          <DetailRow label="Status">{firstValue(selectedProject, ['status']) || '—'}</DetailRow>
+                          <DetailRow label="Project Age">
+                            {firstValue(selectedProject, ['projectAge', 'monthsActive', 'projectage', 'monthsactive']) || '—'}
+                            {estimatedDuration ? ` (${estimatedDuration})` : ''}
+                          </DetailRow>
+                        </div>
+                      </div>
+
+                      <div style={{ minWidth: 260, display: 'grid', gap: 12 }}>
+                        <MetricCard label="Contract Amount" value={formatCurrency(safeNumber(firstValue(selectedProject, ['contractAmount', 'contractamount'])))} />
+                        <MetricCard label="Remaining To Bill" value={formatCurrency(safeNumber(firstValue(selectedProject, ['remainingToBill', 'remainingtobill'])))} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div>No project data loaded.</div>
+                )}
+              </div>
+
+              <div style={{ ...card, padding: 22 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Consultants</div>
+                {projectConsultants.length ? (
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {projectConsultants.map((row, index) => (
+                      <div key={`${index}-${firstValue(row, ['consultantName', 'consultantname'])}`} style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 14 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                          <div>
+                            <div style={{ fontWeight: 800 }}>{firstValue(row, ['consultantName', 'consultantname']) || 'Unnamed Consultant'}</div>
+                            <div style={{ color: muted, fontSize: 13 }}>{firstValue(row, ['trade']) || '—'}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700 }}>{formatCurrency(safeNumber(firstValue(row, ['contractAmount', 'contractamount'])))}</div>
+                            <div style={{ color: muted, fontSize: 13 }}>Consultant Contract</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: muted }}>No consultants found for this project.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'financial' && (
+          <div style={{ display: 'grid', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 16 }}>
+              <MetricCard label="Visible Contracts" value={formatCurrency(visibleContracts)} />
+              <MetricCard label="Current Receivable" value={formatCurrency(currentReceivable)} />
+              <MetricCard label="Future Receivable" value={formatCurrency(futureReceivable)} />
+              <MetricCard label="Accounts Payable" value={formatCurrency(accountsPayable)} />
+              <MetricCard label="Future Payable" value={formatCurrency(futurePayable)} />
+            </div>
+
+            <div style={{ ...card, padding: 22 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>Financial feed status</div>
+              <div style={{ color: muted, lineHeight: 1.6 }}>
+                This package removes the duplicate cards and replaces them with Future Receivable and Future Payable. If the metric cards show zeroes after deployment, the feed URLs in <code>src/feedConfig.js</code> do not yet match your live published CSV feeds.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loading && (
+          <div style={{ marginTop: 16, color: muted }}>Loading dashboard feeds…</div>
+        )}
+      </div>
+    </div>
+  );
 }
