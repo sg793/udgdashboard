@@ -1,20 +1,21 @@
-SGA Dashboard - Modified Package
+SGA Dashboard v3
 
-This package implements the three requested dashboard changes:
+This package preserves the working dashboard structure and adds the requested upgrades:
+- Current Notes in Project Detail, fed by the published projects_notes sheet
+- Estimated Duration shown beside Project Age when provided in projects_core
+- Corrected Financial top metrics: Visible Contracts, Current Receivable, Future Receivable, Accounts Payable, Future Payable
 
-1. Adds Current Notes in red under the client name in Project Detail.
-2. Adds estimatedDuration in parentheses next to Project Age when present.
-3. Replaces the duplicate Financial metrics with:
-   - Visible Contracts
-   - Current Receivable
-   - Future Receivable
-   - Accounts Payable
-   - Future Payable
+Included:
+- Projects tab
+- Workload tab
+- Financial tab
+- Archive toggle
+- Sort by job number / job name
+- Billing health badge next to status
+- Projects / financials / project notes / consultants / AR / AP / revenue history / tax summary wired live
 
-What is already wired:
-- All published CSV URLs you provided on March 30, 2026 have been inserted into src/feedConfig.js.
-- The final URL you provided is preserved as supplementalFeed so it is not lost, even though this package does not use it yet.
-
-Important:
-- The URL mapping after projectsCore and projectsNotes is based on the order the links were provided.
-- If one of the financial cards looks wrong after deployment, the package is structurally correct, but one or more of those feed assignments may need to be swapped.
+Deploy:
+1. Replace your repo root files with this package contents.
+2. Keep package.json, vite.config.js, index.html, and src/ at repo root.
+3. Commit to main.
+4. Vercel auto-deploys.
